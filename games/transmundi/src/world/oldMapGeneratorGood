@@ -1,0 +1,163 @@
+
+
+import * as THREE from 'three';
+import { getTerrainHeight } from '../core/Utils.js';
+
+export class MapGenerator {
+    constructor(scene) {
+        this.scene = scene;
+        this.trackCurve = null;
+    }
+
+    generate() {
+        // ---------------------------------------------------------
+        // 1. GENERAZIONE DELLA CURVA (SPLINE)
+        // ---------------------------------------------------------
+        const points = [];
+        const radius = 200;
+        
+        // Creiamo un percorso circolare ma sinuoso
+        for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2;
+            // Variazione casuale del raggio per fare curve più o meno strette
+            const rVar = radius + (Math.random() * 100 - 50);
+            
+            const x = Math.cos(angle) * rVar;
+            const z = Math.sin(angle) * rVar;
+            
+            // L'altezza varia leggermente
+            const y = Math.sin(angle * 3) * 10 + 10; 
+            
+            points.push(new THREE.Vector3(x, y, z));
+        }
+
+        // Creiamo l'oggetto CatmullRomCurve3
+        this.trackCurve = new THREE.CatmullRomCurve3(points);
+        this.trackCurve.closed = true; // Il percorso è un anello chiuso
+
+        // ---------------------------------------------------------
+        // 2. COSTRUZIONE DEGLI ELEMENTI 3D
+        // ---------------------------------------------------------
+        // Ora che this.trackCurve esiste, possiamo chiamare i metodi
+        this.createDoubleTracks();
+        this.createSleepers();
+        this.createTerrain();
+        this.createWater();
+    }
+
+    createDoubleTracks() {
+        if (!this.trackCurve) return; // Sicurezza
+
+        const railOffset = 1.5; // Distanza dal centro
+        const divisions = 600;  // Risoluzione della curva
+        
+        const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4 });
+
+        // Funzione helper interna per creare una singola rotaia
+        const createRail = (offsetDir) => {
+            const offsetPoints = [];
+            for(let i = 0; i <= divisions; i++) {
+                const t = (i / divisions) % 1;
+                const pt = this.trackCurve.getPointAt(t);
+                const tan = this.trackCurve.getTangentAt(t);
+                
+                // Calcola il vettore "Destra" per sapere dove spostare la rotaia
+                const up = new THREE.Vector3(0, 1, 0);
+                const right = new THREE.Vector3().crossVectors(tan, up).normalize();
+                
+                // Sposta il punto
+                const offsetPt = pt.clone().add(right.multiplyScalar(offsetDir * railOffset));
+                offsetPoints.push(offsetPt);
+            }
+            
+            // Crea la geometria tubolare sulla nuova linea di punti
+            const curve = new THREE.CatmullRomCurve3(offsetPoints);
+            // Nota: closed false qui perché la gestiamo a punti, ma se i punti combaciano va bene.
+            // Per evitare buchi nel loop, assicurati che il primo e l'ultimo punto coincidano o usa curve chiuse.
+            curve.closed = true; 
+
+            const geo = new THREE.TubeGeometry(curve, divisions, 0.15, 6, true);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.y = 0.2; 
+            this.scene.add(mesh);
+        };
+
+        createRail(1);  // Rotaia Destra
+        createRail(-1); // Rotaia Sinistra
+    }
+
+    createSleepers() {
+        if (!this.trackCurve) return;
+
+        const count = 400; // Aumentato leggermente per densità
+        const geo = new THREE.BoxGeometry(5, 0.3, 1);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x3e2723 }); 
+        
+        const instancedMesh = new THREE.InstancedMesh(geo, mat, count);
+        const dummy = new THREE.Object3D();
+
+        for(let i = 0; i < count; i++) {
+            const t = i / count;
+            const pos = this.trackCurve.getPointAt(t);
+            const tan = this.trackCurve.getTangentAt(t);
+            
+            dummy.position.copy(pos);
+            dummy.lookAt(pos.clone().add(tan));
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+        }
+        this.scene.add(instancedMesh);
+    }
+
+    createTerrain() {
+        const geometry = new THREE.PlaneGeometry(600, 600, 100, 100);
+        geometry.rotateX(-Math.PI / 2);
+
+        const posAttribute = geometry.attributes.position;
+        const vertex = new THREE.Vector3();
+
+        for (let i = 0; i < posAttribute.count; i++) {
+            vertex.fromBufferAttribute(posAttribute, i);
+            
+            let finalY = getTerrainHeight(vertex.x, vertex.z);
+            
+            // Scava trincea vicino ai binari
+            const distFromCenter = Math.sqrt(vertex.x * vertex.x + vertex.z * vertex.z);
+            // Approssimazione: il raggio medio è 200
+            if (distFromCenter > 150 && distFromCenter < 250) {
+                // Qui dovremmo fare un controllo più preciso sulla distanza dalla curva
+                // ma per ora va bene approssimato
+                finalY = Math.min(finalY, 8); 
+            }
+            
+            if (finalY < -5) finalY = -10; // Fondale lago
+
+            posAttribute.setY(i, finalY);
+        }
+
+        geometry.computeVertexNormals();
+        
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, 
+            roughness: 1,
+            flatShading: true 
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        this.scene.add(mesh);
+    }
+
+    createWater() {
+        const waterGeo = new THREE.PlaneGeometry(600, 600);
+        waterGeo.rotateX(-Math.PI / 2);
+        const waterMat = new THREE.MeshStandardMaterial({ 
+            color: 0x113355, 
+            roughness: 0.1, 
+            metalness: 0.5,
+            transparent: true,
+            opacity: 0.8
+        });
+        const water = new THREE.Mesh(waterGeo, waterMat);
+        water.position.y = -2; 
+        this.scene.add(water);
+    }
+}

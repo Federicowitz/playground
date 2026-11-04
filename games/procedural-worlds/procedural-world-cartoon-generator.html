@@ -1,0 +1,3129 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cartoon World Generator · Playground</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #253f44;
+        font-family: Arial, sans-serif;
+    }
+
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+    }
+
+    canvas:active {
+        cursor: grabbing;
+    }
+
+    #panel {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+
+        width: 290px;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+
+        padding: 16px;
+
+        border-radius: 18px;
+
+        background: rgba(20, 29, 30, 0.88);
+        backdrop-filter: blur(10px);
+
+        color: white;
+
+        box-shadow:
+            0 10px 30px rgba(0,0,0,0.25);
+
+        user-select: none;
+    }
+
+    #panel h2 {
+        margin: 0 0 14px 0;
+        font-size: 17px;
+    }
+
+    .control {
+        margin-bottom: 13px;
+    }
+
+    .control-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        margin-bottom: 5px;
+
+        font-size: 12px;
+        color: rgba(255,255,255,0.82);
+    }
+
+    .value {
+        font-weight: bold;
+        color: white;
+    }
+
+    input[type="range"] {
+        width: 100%;
+    }
+
+    input[type="number"] {
+        width: 100%;
+
+        padding: 8px;
+
+        border: none;
+        border-radius: 8px;
+
+        background: rgba(255,255,255,0.1);
+        color: white;
+    }
+
+    button {
+        width: 100%;
+
+        padding: 10px;
+        margin-top: 5px;
+
+        border: none;
+        border-radius: 11px;
+
+        background: #70965e;
+        color: white;
+
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    button:hover {
+        filter: brightness(1.08);
+    }
+
+    #info {
+        margin-top: 12px;
+
+        font-size: 11px;
+        line-height: 1.5;
+
+        color: rgba(255,255,255,0.55);
+    }
+</style>
+
+<meta name="description" content="Un laboratorio di paesaggi procedurali 3D in stile cartoon. Esplora mondi generati e sperimenta con i parametri.">
+<link rel="canonical" href="https://playground.federicolelli.com/games/procedural-worlds/procedural-world-cartoon-generator.html">
+<link rel="stylesheet" href="../../assets/playground.css">
+</head>
+
+<body>
+<script src="../../assets/playground.js"></script>
+
+<canvas id="canvas"></canvas>
+
+<div id="panel">
+
+    <h2>World Generator</h2>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Acqua</span>
+            <span class="value" id="waterValue"></span>
+        </div>
+
+        <input
+            id="water"
+            type="range"
+            min="0.20"
+            max="0.60"
+            step="0.005"
+            value="0.39"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Fine costa / inizio prato</span>
+            <span class="value" id="sandValue"></span>
+        </div>
+
+        <input
+            id="sand"
+            type="range"
+            min="0.25"
+            max="0.70"
+            step="0.005"
+            value="0.44"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Rocce</span>
+            <span class="value" id="rockValue"></span>
+        </div>
+
+        <input
+            id="rock"
+            type="range"
+            min="0.45"
+            max="0.90"
+            step="0.005"
+            value="0.69"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Cespugli</span>
+            <span class="value" id="bushValue"></span>
+        </div>
+
+        <input
+            id="bush"
+            type="range"
+            min="0.45"
+            max="0.90"
+            step="0.005"
+            value="0.66"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Dimensione regioni</span>
+            <span class="value" id="scaleValue"></span>
+        </div>
+
+        <input
+            id="scale"
+            type="range"
+            min="0.015"
+            max="0.12"
+            step="0.0025"
+            value="0.045"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Dimensione tile</span>
+            <span class="value" id="tileValue"></span>
+        </div>
+
+        <input
+            id="tile"
+            type="range"
+            min="32"
+            max="120"
+            step="4"
+            value="72"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Angoli</span>
+            <span class="value" id="cornerValue"></span>
+        </div>
+
+        <input
+            id="corner"
+            type="range"
+            min="0"
+            max="40"
+            step="1"
+            value="22"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Pennellate prato</span>
+            <span class="value" id="grassDetailValue"></span>
+        </div>
+
+        <input
+            id="grassDetail"
+            type="range"
+            min="0"
+            max="0.40"
+            step="0.01"
+            value="0.10"
+        >
+    </div>
+
+
+    <div class="control">
+        <div class="control-header">
+            <span>Raggio spawn terrestre</span>
+            <span class="value" id="spawnValue"></span>
+        </div>
+
+        <input
+            id="spawn"
+            type="range"
+            min="0"
+            max="30"
+            step="1"
+            value="10"
+        >
+    </div>
+
+
+    <div class="control">
+
+        <div class="control-header">
+            <span>Seed</span>
+        </div>
+
+        <input
+            id="seed"
+            type="number"
+            value="24817"
+        >
+
+    </div>
+
+
+    <button id="randomSeed">
+        Nuovo mondo
+    </button>
+
+
+    <button id="resetCamera">
+        Torna allo spawn
+    </button>
+
+
+    <div id="info">
+        WASD / frecce = spostamento<br>
+        Mouse drag = spostamento<br>
+        Rotella = zoom<br><br>
+
+        Valore acqua più alto = più acqua.<br>
+        Valore rocce più basso = più rocce.<br>
+        Valore cespugli più basso = più cespugli.<br>
+        Scala più bassa = regioni più grandi.
+    </div>
+
+</div>
+
+
+<script>
+"use strict";
+
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d", {
+        alpha: false
+    });
+
+let W = 0;
+let H = 0;
+let DPR = 1;
+
+
+
+function resize() {
+
+    DPR =
+        Math.min(
+            window.devicePixelRatio || 1,
+            2
+        );
+
+    W =
+        window.innerWidth;
+
+    H =
+        window.innerHeight;
+
+
+    canvas.width =
+        Math.floor(W * DPR);
+
+    canvas.height =
+        Math.floor(H * DPR);
+
+
+    canvas.style.width =
+        W + "px";
+
+    canvas.style.height =
+        H + "px";
+
+
+    ctx.setTransform(
+        DPR, 0,
+        0, DPR,
+        0, 0
+    );
+
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+}
+
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+resize();
+
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+const settings = {
+
+    seed: 24817,
+
+    water: 0.39,
+
+    sand: 0.44,
+
+    rockThreshold: 0.69,
+
+    bushThreshold: 0.66,
+
+    terrainScale: 0.045,
+
+    tileSize: 72,
+
+    cornerRadius: 22,
+
+    grassDetail: 0.10,
+
+    spawnLandRadius: 10
+};
+
+
+
+const COLORS = {
+
+    water:
+        "#426f77",
+
+    waterDark:
+        "#345e66",
+
+    waterLight:
+        "#7ba3a3",
+
+
+    sand:
+        "#cdb37b",
+
+    sandDark:
+        "#af9568",
+
+
+    grass:
+        "#759b62",
+
+    grassLight:
+        "#91ad76",
+
+    grassDark:
+        "#57784c",
+
+
+    dirt:
+        "#9e7953",
+
+
+    rock:
+        "#737f78",
+
+    rockDark:
+        "#4f5b56",
+
+    rockLight:
+        "#a1aba0",
+
+
+    bush:
+        "#47764c",
+
+    bushMid:
+        "#5a8959",
+
+    bushDark:
+        "#345d3c",
+
+    bushLight:
+        "#84a96e"
+};
+
+    /* =========================================================
+       CACHE
+    ========================================================= */
+
+    const terrainCache =
+        new Map();
+
+
+    function clearWorld() {
+
+        terrainCache.clear();
+    }
+
+
+/* =========================================================
+   UI
+========================================================= */
+
+function bindSlider(
+    id,
+    setting,
+    valueId,
+    formatter = v => v
+) {
+
+    const input =
+        document.getElementById(id);
+
+    const output =
+        document.getElementById(valueId);
+
+
+    function update() {
+
+        settings[setting] =
+            Number(input.value);
+
+
+        output.textContent =
+            formatter(settings[setting]);
+
+
+        clearWorld();
+    }
+
+
+    input.addEventListener(
+        "input",
+        update
+    );
+
+
+    update();
+}
+
+
+
+bindSlider(
+    "water",
+    "water",
+    "waterValue",
+    v => v.toFixed(3)
+);
+
+
+bindSlider(
+    "sand",
+    "sand",
+    "sandValue",
+    v => v.toFixed(3)
+);
+
+
+bindSlider(
+    "rock",
+    "rockThreshold",
+    "rockValue",
+    v => v.toFixed(3)
+);
+
+
+bindSlider(
+    "bush",
+    "bushThreshold",
+    "bushValue",
+    v => v.toFixed(3)
+);
+
+
+bindSlider(
+    "scale",
+    "terrainScale",
+    "scaleValue",
+    v => v.toFixed(3)
+);
+
+
+bindSlider(
+    "tile",
+    "tileSize",
+    "tileValue",
+    v => v + " px"
+);
+
+
+bindSlider(
+    "corner",
+    "cornerRadius",
+    "cornerValue",
+    v => v + " px"
+);
+
+
+bindSlider(
+    "grassDetail",
+    "grassDetail",
+    "grassDetailValue",
+    v => Math.round(v * 100) + "%"
+);
+
+
+bindSlider(
+    "spawn",
+    "spawnLandRadius",
+    "spawnValue",
+    v => v + " tile"
+);
+
+
+
+const seedInput =
+    document.getElementById("seed");
+
+
+seedInput.addEventListener(
+    "change",
+    () => {
+
+        settings.seed =
+            Number(seedInput.value) || 1;
+
+        clearWorld();
+    }
+);
+
+
+document
+    .getElementById("randomSeed")
+    .addEventListener(
+        "click",
+        () => {
+
+            settings.seed =
+                Math.floor(
+                    Math.random() *
+                    999999999
+                );
+
+            seedInput.value =
+                settings.seed;
+
+            clearWorld();
+        }
+    );
+
+
+document
+    .getElementById("resetCamera")
+    .addEventListener(
+        "click",
+        () => {
+
+            camera.x = 0;
+            camera.y = 0;
+
+            camera.zoom = 1;
+            camera.targetZoom = 1;
+        }
+    );
+
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+const camera = {
+
+    x: 0,
+    y: 0,
+
+    zoom: 1,
+    targetZoom: 1
+};
+
+
+const keys = {};
+
+
+window.addEventListener(
+    "keydown",
+    e => {
+
+        keys[
+            e.key.toLowerCase()
+        ] = true;
+    }
+);
+
+
+window.addEventListener(
+    "keyup",
+    e => {
+
+        keys[
+            e.key.toLowerCase()
+        ] = false;
+    }
+);
+
+
+
+canvas.addEventListener(
+    "wheel",
+    e => {
+
+        e.preventDefault();
+
+
+        camera.targetZoom *=
+            e.deltaY > 0
+            ? 0.9
+            : 1.1;
+
+
+        camera.targetZoom =
+            Math.max(
+                0.35,
+                Math.min(
+                    2.5,
+                    camera.targetZoom
+                )
+            );
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+
+let dragging = false;
+
+let mouseX = 0;
+let mouseY = 0;
+
+
+canvas.addEventListener(
+    "mousedown",
+    e => {
+
+        dragging = true;
+
+        mouseX =
+            e.clientX;
+
+        mouseY =
+            e.clientY;
+    }
+);
+
+
+window.addEventListener(
+    "mouseup",
+    () => {
+
+        dragging = false;
+    }
+);
+
+
+window.addEventListener(
+    "mousemove",
+    e => {
+
+        if (!dragging)
+            return;
+
+
+        camera.x -=
+            (
+                e.clientX -
+                mouseX
+            ) /
+            camera.zoom;
+
+
+        camera.y -=
+            (
+                e.clientY -
+                mouseY
+            ) /
+            camera.zoom;
+
+
+        mouseX =
+            e.clientX;
+
+        mouseY =
+            e.clientY;
+    }
+);
+
+
+
+/* =========================================================
+   RANDOM HASH
+
+   Questa versione restituisce correttamente 0 → 1.
+========================================================= */
+
+function hash(
+    x,
+    y,
+    seed = 1
+) {
+
+    let h =
+        Math.imul(
+            x ^ seed,
+            374761393
+        ) ^
+
+        Math.imul(
+            y +
+            Math.imul(
+                seed,
+                31
+            ),
+            668265263
+        );
+
+
+    h =
+        Math.imul(
+            h ^ (h >>> 13),
+            1274126177
+        );
+
+
+    h ^=
+        h >>> 16;
+
+
+    return (
+        h >>> 0
+    ) /
+    4294967295;
+}
+
+
+
+/* =========================================================
+   NOISE
+========================================================= */
+
+function smooth(t) {
+
+    return (
+        t *
+        t *
+        (3 - 2 * t)
+    );
+}
+
+
+function lerp(
+    a,
+    b,
+    t
+) {
+
+    return (
+        a +
+        (b - a) *
+        t
+    );
+}
+
+
+
+function noise(
+    x,
+    y,
+    seed
+) {
+
+    const xi =
+        Math.floor(x);
+
+    const yi =
+        Math.floor(y);
+
+
+    const xf =
+        x - xi;
+
+    const yf =
+        y - yi;
+
+
+    const a =
+        hash(
+            xi,
+            yi,
+            seed
+        );
+
+
+    const b =
+        hash(
+            xi + 1,
+            yi,
+            seed
+        );
+
+
+    const c =
+        hash(
+            xi,
+            yi + 1,
+            seed
+        );
+
+
+    const d =
+        hash(
+            xi + 1,
+            yi + 1,
+            seed
+        );
+
+
+    const u =
+        smooth(xf);
+
+    const v =
+        smooth(yf);
+
+
+    return lerp(
+
+        lerp(
+            a,
+            b,
+            u
+        ),
+
+        lerp(
+            c,
+            d,
+            u
+        ),
+
+        v
+    );
+}
+
+
+
+function fbm(
+    x,
+    y,
+    seed
+) {
+
+    let result = 0;
+
+    let amplitude =
+        0.5;
+
+    let normalization =
+        0;
+
+
+    for (
+        let i = 0;
+        i < 5;
+        i++
+    ) {
+
+        result +=
+            noise(
+                x,
+                y,
+                seed +
+                i * 911
+            ) *
+            amplitude;
+
+
+        normalization +=
+            amplitude;
+
+
+        x *=
+            2.03;
+
+        y *=
+            2.03;
+
+
+        amplitude *=
+            0.5;
+    }
+
+
+    return (
+        result /
+        normalization
+    );
+}
+
+
+
+
+
+
+/* =========================================================
+   TERRAIN
+========================================================= */
+
+function terrain(
+    tx,
+    ty
+) {
+
+    const key =
+        tx + "," + ty;
+
+
+    if (
+        terrainCache.has(key)
+    ) {
+
+        return (
+            terrainCache.get(key)
+        );
+    }
+
+
+
+    const scale =
+        settings.terrainScale;
+
+
+
+    /*
+       Macro noise.
+
+       Determina grandi masse.
+    */
+
+    const macro =
+        fbm(
+            tx * scale,
+            ty * scale,
+            settings.seed
+        );
+
+
+    /*
+       Noise secondario.
+
+       Rompe leggermente la forma
+       senza trasformarla in rumore.
+    */
+
+    const secondary =
+        fbm(
+            tx * scale * 1.85 + 150,
+            ty * scale * 1.85 - 200,
+            settings.seed + 9381
+        );
+
+
+    let elevation =
+        macro * 0.76 +
+        secondary * 0.24;
+
+
+
+    /*
+       GARANZIA SPAWN TERRESTRE.
+
+       Vicino a 0,0 viene aggiunto
+       un piccolo aumento di elevazione.
+
+       Diminuisce progressivamente
+       allontanandosi dallo spawn.
+    */
+
+    const distance =
+        Math.hypot(
+            tx,
+            ty
+        );
+
+
+    const radius =
+        settings.spawnLandRadius;
+
+
+    if (
+        radius > 0 &&
+        distance < radius
+    ) {
+
+        const strength =
+            1 -
+            distance /
+            radius;
+
+
+        elevation +=
+            strength *
+            0.28;
+    }
+
+
+
+    let type;
+
+
+
+    if (
+        elevation <
+        settings.water
+    ) {
+
+        type =
+            "water";
+    }
+
+    else if (
+        elevation <
+        settings.sand
+    ) {
+
+        type =
+            "sand";
+    }
+
+    else {
+
+        type =
+            "grass";
+    }
+
+
+
+    /*
+       Dirt patches.
+    */
+
+    const dirtNoise =
+        fbm(
+            tx * 0.075 - 90,
+            ty * 0.075 + 120,
+            settings.seed + 20000
+        );
+
+
+    const dirt =
+        type === "grass" &&
+        dirtNoise > 0.72;
+
+
+
+    const data = {
+
+        type,
+        elevation,
+        dirt
+    };
+
+
+    terrainCache.set(
+        key,
+        data
+    );
+
+
+    return data;
+}
+
+
+
+/* =========================================================
+   TILE TEST
+========================================================= */
+
+function isLand(
+    x,
+    y
+) {
+
+    return (
+        terrain(
+            x,
+            y
+        ).type !==
+        "water"
+    );
+}
+
+
+
+function isGrass(
+    x,
+    y
+) {
+
+    return (
+        terrain(
+            x,
+            y
+        ).type ===
+        "grass"
+    );
+}
+
+
+
+/* =========================================================
+   ROUNDED AUTOTILE
+========================================================= */
+
+function tilePath(
+    tx,
+    ty,
+    test
+) {
+
+    const size =
+        settings.tileSize;
+
+
+    const x =
+        tx * size;
+
+    const y =
+        ty * size;
+
+
+    const L =
+        test(
+            tx - 1,
+            ty
+        );
+
+
+    const R =
+        test(
+            tx + 1,
+            ty
+        );
+
+
+    const T =
+        test(
+            tx,
+            ty - 1
+        );
+
+
+    const B =
+        test(
+            tx,
+            ty + 1
+        );
+
+
+    const radius =
+        Math.min(
+            settings.cornerRadius,
+            size * 0.45
+        );
+
+
+    const tl =
+        !L && !T
+        ? radius
+        : 0;
+
+
+    const tr =
+        !R && !T
+        ? radius
+        : 0;
+
+
+    const br =
+        !R && !B
+        ? radius
+        : 0;
+
+
+    const bl =
+        !L && !B
+        ? radius
+        : 0;
+
+
+
+    /*
+       Piccolo overlap.
+
+       Evita linee tra tile.
+    */
+
+    const o =
+        0.65;
+
+
+    const x0 =
+        x - o;
+
+    const y0 =
+        y - o;
+
+
+    const x1 =
+        x +
+        size +
+        o;
+
+    const y1 =
+        y +
+        size +
+        o;
+
+
+
+    const path =
+        new Path2D();
+
+
+    path.moveTo(
+        x0 + tl,
+        y0
+    );
+
+
+    path.lineTo(
+        x1 - tr,
+        y0
+    );
+
+
+    if (tr) {
+
+        path.quadraticCurveTo(
+            x1,
+            y0,
+
+            x1,
+            y0 + tr
+        );
+
+    } else {
+
+        path.lineTo(
+            x1,
+            y0
+        );
+    }
+
+
+
+    path.lineTo(
+        x1,
+        y1 - br
+    );
+
+
+    if (br) {
+
+        path.quadraticCurveTo(
+            x1,
+            y1,
+
+            x1 - br,
+            y1
+        );
+
+    } else {
+
+        path.lineTo(
+            x1,
+            y1
+        );
+    }
+
+
+
+    path.lineTo(
+        x0 + bl,
+        y1
+    );
+
+
+    if (bl) {
+
+        path.quadraticCurveTo(
+            x0,
+            y1,
+
+            x0,
+            y1 - bl
+        );
+
+    } else {
+
+        path.lineTo(
+            x0,
+            y1
+        );
+    }
+
+
+
+    path.lineTo(
+        x0,
+        y0 + tl
+    );
+
+
+    if (tl) {
+
+        path.quadraticCurveTo(
+            x0,
+            y0,
+
+            x0 + tl,
+            y0
+        );
+    }
+
+
+    path.closePath();
+
+
+    return path;
+}
+
+
+
+/* =========================================================
+   PROPS
+========================================================= */
+
+function canPlaceProp(
+    x,
+    y
+) {
+
+    const t =
+        terrain(
+            x,
+            y
+        );
+
+
+    return (
+        t.type ===
+        "grass" &&
+        !t.dirt
+    );
+}
+
+
+
+/* =========================================================
+   ROCK MAP
+========================================================= */
+
+function hasRock(
+    x,
+    y
+) {
+
+    if (
+        !canPlaceProp(
+            x,
+            y
+        )
+    ) {
+
+        return false;
+    }
+
+
+    const value =
+        fbm(
+            x * 0.17 + 500,
+            y * 0.17 - 220,
+            settings.seed + 40000
+        );
+
+
+    return (
+        value >
+        settings.rockThreshold
+    );
+}
+
+
+
+/* =========================================================
+   BUSH MAP
+========================================================= */
+
+function hasBush(
+    x,
+    y
+) {
+
+    if (
+        !canPlaceProp(
+            x,
+            y
+        )
+    ) {
+
+        return false;
+    }
+
+
+    if (
+        hasRock(
+            x,
+            y
+        )
+    ) {
+
+        return false;
+    }
+
+
+    const value =
+        fbm(
+            x * 0.15 - 420,
+            y * 0.15 + 380,
+            settings.seed + 80000
+        );
+
+
+    return (
+        value >
+        settings.bushThreshold
+    );
+}
+
+
+
+/* =========================================================
+   2x2 DETECTION
+========================================================= */
+
+function is2x2(
+    x,
+    y,
+    test
+) {
+
+    return (
+
+        test(
+            x,
+            y
+        ) &&
+
+        test(
+            x + 1,
+            y
+        ) &&
+
+        test(
+            x,
+            y + 1
+        ) &&
+
+        test(
+            x + 1,
+            y + 1
+        )
+    );
+}
+
+
+
+function belongs2x2(
+    x,
+    y,
+    test
+) {
+
+    return (
+
+        is2x2(
+            x,
+            y,
+            test
+        ) ||
+
+        is2x2(
+            x - 1,
+            y,
+            test
+        ) ||
+
+        is2x2(
+            x,
+            y - 1,
+            test
+        ) ||
+
+        is2x2(
+            x - 1,
+            y - 1,
+            test
+        )
+    );
+}
+
+
+
+/* =========================================================
+   ROCK DRAWING
+========================================================= */
+
+function drawRock(
+    x,
+    y,
+    size,
+    seed
+) {
+
+    ctx.save();
+
+    ctx.translate(
+        x,
+        y
+    );
+
+
+
+    /* shadow */
+
+    ctx.fillStyle =
+        "rgba(20,35,28,0.20)";
+
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        3,
+        size * 0.35,
+
+        size * 0.72,
+        size * 0.29,
+
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+
+    /*
+       irregular silhouette
+    */
+
+    const points =
+        8;
+
+
+    ctx.beginPath();
+
+
+    for (
+        let i = 0;
+        i < points;
+        i++
+    ) {
+
+        const angle =
+            (
+                i /
+                points
+            ) *
+            Math.PI *
+            2;
+
+
+        const random =
+            0.83 +
+            hash(
+                seed + i,
+                seed,
+                193
+            ) *
+            0.22;
+
+
+        const px =
+            Math.cos(
+                angle
+            ) *
+            size *
+            random;
+
+
+        const py =
+            Math.sin(
+                angle
+            ) *
+            size *
+            0.72 *
+            random;
+
+
+        if (
+            i === 0
+        ) {
+
+            ctx.moveTo(
+                px,
+                py
+            );
+
+        } else {
+
+            ctx.lineTo(
+                px,
+                py
+            );
+        }
+    }
+
+
+    ctx.closePath();
+
+
+    ctx.fillStyle =
+        COLORS.rock;
+
+
+    ctx.fill();
+
+
+
+    /*
+       lower shading
+    */
+
+    ctx.fillStyle =
+        "rgba(47,59,54,0.25)";
+
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        4,
+        size * 0.17,
+
+        size * 0.68,
+        size * 0.37,
+
+        0,
+        0,
+        Math.PI
+    );
+
+    ctx.fill();
+
+
+
+    /*
+       highlight
+    */
+
+    ctx.fillStyle =
+        COLORS.rockLight;
+
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        -size * 0.22,
+        -size * 0.26,
+
+        size * 0.28,
+        size * 0.12,
+
+        -0.3,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    ctx.restore();
+}
+
+
+
+/* =========================================================
+   2x2 ROCK FORMATION
+========================================================= */
+
+function drawRock2x2(
+    tx,
+    ty
+) {
+
+    const size =
+        settings.tileSize;
+
+
+    const x =
+        (
+            tx + 1
+        ) *
+        size;
+
+
+    const y =
+        (
+            ty + 1
+        ) *
+        size;
+
+
+
+    drawRock(
+        x - size * 0.34,
+        y - size * 0.25,
+
+        size * 0.42,
+
+        tx * 91 +
+        ty * 37
+    );
+
+
+    drawRock(
+        x + size * 0.28,
+        y - size * 0.20,
+
+        size * 0.47,
+
+        tx * 71 +
+        ty * 51
+    );
+
+
+    drawRock(
+        x,
+        y + size * 0.08,
+
+        size * 0.59,
+
+        tx * 113 +
+        ty * 19
+    );
+
+
+    drawRock(
+        x + size * 0.42,
+        y + size * 0.35,
+
+        size * 0.28,
+
+        tx * 31 +
+        ty * 151
+    );
+}
+
+
+
+/* =========================================================
+   BUSH DRAWING
+========================================================= */
+
+function circle(
+    x,
+    y,
+    radius,
+    color
+) {
+
+    ctx.fillStyle =
+        color;
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x,
+        y,
+
+        radius,
+
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+
+function drawBush(
+    x,
+    y,
+    size
+) {
+
+    ctx.save();
+
+    ctx.translate(
+        x,
+        y
+    );
+
+
+
+    ctx.fillStyle =
+        "rgba(21,44,28,0.18)";
+
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        2,
+        size * 0.36,
+
+        size * 0.85,
+        size * 0.33,
+
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+
+    circle(
+        -size * 0.36,
+        size * 0.04,
+        size * 0.48,
+        COLORS.bushDark
+    );
+
+
+    circle(
+        size * 0.35,
+        size * 0.07,
+        size * 0.50,
+        COLORS.bush
+    );
+
+
+    circle(
+        0,
+        -size * 0.17,
+        size * 0.58,
+        COLORS.bushMid
+    );
+
+
+    circle(
+        -size * 0.15,
+        -size * 0.31,
+        size * 0.20,
+        COLORS.bushLight
+    );
+
+
+    ctx.restore();
+}
+
+
+
+/* =========================================================
+   2x2 BUSH FORMATION
+========================================================= */
+
+function drawBush2x2(
+    tx,
+    ty
+) {
+
+    const s =
+        settings.tileSize;
+
+
+    const x =
+        (
+            tx + 1
+        ) *
+        s;
+
+
+    const y =
+        (
+            ty + 1
+        ) *
+        s;
+
+
+    ctx.save();
+
+    ctx.translate(
+        x,
+        y
+    );
+
+
+
+    ctx.fillStyle =
+        "rgba(21,44,27,0.20)";
+
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        0,
+        s * 0.42,
+
+        s * 0.92,
+        s * 0.35,
+
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+
+    circle(
+        -s * 0.45,
+        s * 0.1,
+        s * 0.47,
+        COLORS.bushDark
+    );
+
+
+    circle(
+        s * 0.43,
+        s * 0.1,
+        s * 0.50,
+        COLORS.bushDark
+    );
+
+
+    circle(
+        -s * 0.40,
+        -s * 0.20,
+        s * 0.49,
+        COLORS.bush
+    );
+
+
+    circle(
+        s * 0.38,
+        -s * 0.21,
+        s * 0.53,
+        COLORS.bush
+    );
+
+
+    circle(
+        0,
+        s * 0.05,
+        s * 0.58,
+        COLORS.bushMid
+    );
+
+
+    circle(
+        0,
+        -s * 0.48,
+        s * 0.46,
+        COLORS.bushMid
+    );
+
+
+    circle(
+        -s * 0.18,
+        -s * 0.57,
+        s * 0.16,
+        COLORS.bushLight
+    );
+
+
+    ctx.restore();
+}
+
+
+
+/* =========================================================
+   WATER
+========================================================= */
+
+function drawWater(
+    range
+) {
+
+    ctx.fillStyle =
+        COLORS.water;
+
+
+    ctx.fillRect(
+
+        range.minX *
+        settings.tileSize -
+        300,
+
+        range.minY *
+        settings.tileSize -
+        300,
+
+        (
+            range.maxX -
+            range.minX +
+            1
+        ) *
+        settings.tileSize +
+        600,
+
+        (
+            range.maxY -
+            range.minY +
+            1
+        ) *
+        settings.tileSize +
+        600
+    );
+
+
+
+    /*
+       water strokes
+    */
+
+    ctx.lineCap =
+        "round";
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                terrain(
+                    x,
+                    y
+                ).type !==
+                "water"
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                hash(
+                    x,
+                    y,
+                    settings.seed + 77
+                ) >
+                0.10
+            ) {
+
+                continue;
+            }
+
+
+            const s =
+                settings.tileSize;
+
+
+            const px =
+                x * s +
+                s *
+                (
+                    0.25 +
+                    hash(
+                        x,
+                        y,
+                        1
+                    ) *
+                    0.50
+                );
+
+
+            const py =
+                y * s +
+                s *
+                (
+                    0.30 +
+                    hash(
+                        x,
+                        y,
+                        2
+                    ) *
+                    0.40
+                );
+
+
+            ctx.strokeStyle =
+                "rgba(210,235,230,0.15)";
+
+
+            ctx.lineWidth =
+                Math.max(
+                    2,
+                    s * 0.035
+                );
+
+
+            ctx.beginPath();
+
+
+            ctx.moveTo(
+                px - s * 0.16,
+                py
+            );
+
+
+            ctx.quadraticCurveTo(
+                px,
+                py - s * 0.045,
+
+                px + s * 0.16,
+                py
+            );
+
+
+            ctx.stroke();
+        }
+    }
+}
+
+
+
+/* =========================================================
+   TERRAIN
+========================================================= */
+
+function drawTerrain(
+    range
+) {
+
+    /*
+       SAND BASE
+
+       Tutto il terreno riceve prima
+       una base sabbia.
+
+       Il prato viene disegnato sopra.
+    */
+
+    ctx.fillStyle =
+        COLORS.sand;
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !isLand(
+                    x,
+                    y
+                )
+            ) {
+
+                continue;
+            }
+
+
+            ctx.fill(
+                tilePath(
+                    x,
+                    y,
+                    isLand
+                )
+            );
+        }
+    }
+
+
+
+    /*
+       GRASS
+    */
+
+    ctx.fillStyle =
+        COLORS.grass;
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !isGrass(
+                    x,
+                    y
+                )
+            ) {
+
+                continue;
+            }
+
+
+            ctx.fill(
+                tilePath(
+                    x,
+                    y,
+                    isGrass
+                )
+            );
+        }
+    }
+
+
+
+    /*
+       DIRT PATCHES
+    */
+
+    const s =
+        settings.tileSize;
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !terrain(
+                    x,
+                    y
+                ).dirt
+            ) {
+
+                continue;
+            }
+
+
+            const inset =
+                s * 0.08;
+
+
+            ctx.fillStyle =
+                COLORS.dirt;
+
+
+            ctx.beginPath();
+
+
+            ctx.roundRect(
+
+                x * s +
+                inset,
+
+                y * s +
+                inset,
+
+                s -
+                inset * 2,
+
+                s -
+                inset * 2,
+
+                Math.min(
+                    settings.cornerRadius,
+                    s * 0.25
+                )
+            );
+
+
+            ctx.fill();
+        }
+    }
+
+
+
+    drawGrassBrushes(
+        range
+    );
+}
+
+
+
+/* =========================================================
+   GRASS BRUSH STROKES
+========================================================= */
+
+function drawGrassBrushes(
+    range
+) {
+
+    const s =
+        settings.tileSize;
+
+
+    ctx.lineCap =
+        "round";
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !isGrass(
+                    x,
+                    y
+                )
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                terrain(
+                    x,
+                    y
+                ).dirt
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                hash(
+                    x,
+                    y,
+                    settings.seed + 600
+                ) >
+                settings.grassDetail
+            ) {
+
+                continue;
+            }
+
+
+            const px =
+                x * s +
+                s *
+                (
+                    0.25 +
+                    hash(
+                        x,
+                        y,
+                        61
+                    ) *
+                    0.5
+                );
+
+
+            const py =
+                y * s +
+                s *
+                (
+                    0.30 +
+                    hash(
+                        x,
+                        y,
+                        62
+                    ) *
+                    0.4
+                );
+
+
+            ctx.strokeStyle =
+                "rgba(46,91,52,0.20)";
+
+
+            ctx.lineWidth =
+                Math.max(
+                    2,
+                    s * 0.045
+                );
+
+
+            ctx.beginPath();
+
+
+            ctx.moveTo(
+                px - s * 0.14,
+                py + 2
+            );
+
+
+            ctx.quadraticCurveTo(
+                px,
+                py - s * 0.06,
+
+                px + s * 0.14,
+                py
+            );
+
+
+            ctx.stroke();
+        }
+    }
+}
+
+
+
+/* =========================================================
+   PROP RENDER
+========================================================= */
+
+function drawBushes(
+    range
+) {
+
+    /*
+       2x2 clusters
+    */
+
+    for (
+        let y = range.minY - 1;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX - 1;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !is2x2(
+                    x,
+                    y,
+                    hasBush
+                )
+            ) {
+
+                continue;
+            }
+
+
+            /*
+               Evita duplicazione cluster.
+            */
+
+            if (
+                is2x2(
+                    x - 1,
+                    y,
+                    hasBush
+                ) ||
+
+                is2x2(
+                    x,
+                    y - 1,
+                    hasBush
+                )
+            ) {
+
+                continue;
+            }
+
+
+            drawBush2x2(
+                x,
+                y
+            );
+        }
+    }
+
+
+
+    /*
+       Singles
+    */
+
+    const s =
+        settings.tileSize;
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !hasBush(
+                    x,
+                    y
+                )
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                belongs2x2(
+                    x,
+                    y,
+                    hasBush
+                )
+            ) {
+
+                continue;
+            }
+
+
+            const variation =
+                0.27 +
+                hash(
+                    x,
+                    y,
+                    settings.seed + 111
+                ) *
+                0.10;
+
+
+            drawBush(
+
+                x * s +
+                s * 0.5,
+
+                y * s +
+                s * 0.56,
+
+                s * variation
+            );
+        }
+    }
+}
+
+
+
+function drawRocks(
+    range
+) {
+
+    /*
+       2x2
+    */
+
+    for (
+        let y = range.minY - 1;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX - 1;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !is2x2(
+                    x,
+                    y,
+                    hasRock
+                )
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                is2x2(
+                    x - 1,
+                    y,
+                    hasRock
+                ) ||
+
+                is2x2(
+                    x,
+                    y - 1,
+                    hasRock
+                )
+            ) {
+
+                continue;
+            }
+
+
+            drawRock2x2(
+                x,
+                y
+            );
+        }
+    }
+
+
+
+    /*
+       Singles
+    */
+
+    const s =
+        settings.tileSize;
+
+
+    for (
+        let y = range.minY;
+        y <= range.maxY;
+        y++
+    ) {
+
+        for (
+            let x = range.minX;
+            x <= range.maxX;
+            x++
+        ) {
+
+            if (
+                !hasRock(
+                    x,
+                    y
+                )
+            ) {
+
+                continue;
+            }
+
+
+            if (
+                belongs2x2(
+                    x,
+                    y,
+                    hasRock
+                )
+            ) {
+
+                continue;
+            }
+
+
+            const rockSize =
+                s *
+                (
+                    0.23 +
+                    hash(
+                        x,
+                        y,
+                        settings.seed + 900
+                    ) *
+                    0.11
+                );
+
+
+            drawRock(
+
+                x * s +
+                s * 0.5,
+
+                y * s +
+                s * 0.57,
+
+                rockSize,
+
+                x * 193 +
+                y * 211 +
+                settings.seed
+            );
+        }
+    }
+}
+
+
+
+/* =========================================================
+   VISIBLE RANGE
+========================================================= */
+
+function visibleRange() {
+
+    const s =
+        settings.tileSize;
+
+
+    const worldW =
+        W /
+        camera.zoom;
+
+
+    const worldH =
+        H /
+        camera.zoom;
+
+
+    return {
+
+        minX:
+            Math.floor(
+                (
+                    camera.x -
+                    worldW / 2
+                ) /
+                s
+            ) -
+            3,
+
+
+        maxX:
+            Math.ceil(
+                (
+                    camera.x +
+                    worldW / 2
+                ) /
+                s
+            ) +
+            3,
+
+
+        minY:
+            Math.floor(
+                (
+                    camera.y -
+                    worldH / 2
+                ) /
+                s
+            ) -
+            3,
+
+
+        maxY:
+            Math.ceil(
+                (
+                    camera.y +
+                    worldH / 2
+                ) /
+                s
+            ) +
+            3
+    };
+}
+
+
+
+/* =========================================================
+   UPDATE
+========================================================= */
+
+function update(
+    dt
+) {
+
+    camera.zoom +=
+        (
+            camera.targetZoom -
+            camera.zoom
+        ) *
+        Math.min(
+            1,
+            dt * 12
+        );
+
+
+    let dx = 0;
+    let dy = 0;
+
+
+    if (
+        keys["a"] ||
+        keys["arrowleft"]
+    ) {
+
+        dx--;
+    }
+
+
+    if (
+        keys["d"] ||
+        keys["arrowright"]
+    ) {
+
+        dx++;
+    }
+
+
+    if (
+        keys["w"] ||
+        keys["arrowup"]
+    ) {
+
+        dy--;
+    }
+
+
+    if (
+        keys["s"] ||
+        keys["arrowdown"]
+    ) {
+
+        dy++;
+    }
+
+
+    if (
+        dx !== 0 ||
+        dy !== 0
+    ) {
+
+        const length =
+            Math.hypot(
+                dx,
+                dy
+            );
+
+
+        const speed =
+            600 /
+            camera.zoom;
+
+
+        camera.x +=
+            dx /
+            length *
+            speed *
+            dt;
+
+
+        camera.y +=
+            dy /
+            length *
+            speed *
+            dt;
+    }
+}
+
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render() {
+
+    ctx.setTransform(
+        DPR,0,
+        0,DPR,
+        0,0
+    );
+
+
+    ctx.fillStyle =
+        COLORS.waterDark;
+
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+
+    ctx.save();
+
+
+    ctx.translate(
+        W / 2,
+        H / 2
+    );
+
+
+    ctx.scale(
+        camera.zoom,
+        camera.zoom
+    );
+
+
+    ctx.translate(
+        -camera.x,
+        -camera.y
+    );
+
+
+    const range =
+        visibleRange();
+
+
+    drawWater(
+        range
+    );
+
+
+    drawTerrain(
+        range
+    );
+
+
+    drawBushes(
+        range
+    );
+
+
+    drawRocks(
+        range
+    );
+
+
+    ctx.restore();
+}
+
+
+
+/* =========================================================
+   LOOP
+========================================================= */
+
+let previous =
+    performance.now();
+
+
+function loop(
+    now
+) {
+
+    const dt =
+        Math.min(
+            (
+                now -
+                previous
+            ) /
+            1000,
+
+            0.05
+        );
+
+
+    previous =
+        now;
+
+
+    update(
+        dt
+    );
+
+
+    render();
+
+
+    requestAnimationFrame(
+        loop
+    );
+}
+
+
+requestAnimationFrame(
+    loop
+);
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="it" data-pg-manual-ready>
+<!-- ... HEAD identico a prima ... -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iron & Aether · Playground</title>
+    <!-- Assicurati che il CSS sia incluso -->
+    <link rel="stylesheet" href="./style.css">
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+<meta name="description" content="Un esperimento ferroviario 3D nato per divertimento: nove locomotive, mondi generati e mappe da disegnare. Alimenta la caldaia e affronta le curve.">
+<link rel="canonical" href="https://playground.federicolelli.com/games/transmundi/">
+<link rel="stylesheet" href="../../assets/playground.css">
+</head>
+
+<body>
+<script src="../../assets/playground.js"></script>
+    <div id="ui-layer">
+
+        <!-- MENU PRINCIPALE -->
+        <div id="main-menu">
+<header class="masthead"><a class="brand" href="./">✦ <span>IRON & AETHER<small>IMPERIAL RAILWAY COMPANY</small></span></a><span class="edition">DEPOSITO CENTRALE / 001</span><span class="status">● SISTEMI IN PRESSIONE</span></header>
+<div class="depot-layout"><section class="fleet-section"><div class="eyebrow">IL VIAGGIO COMINCIA IN OFFICINA</div><h1>Leggende su rotaia<span>Il tuo prossimo viaggio ha un’anima.</span></h1><div class="showcase"><div class="preview-label">HANGAR 09 <span>ANTEPRIMA DEL CONVOGLIO</span></div><canvas id="train-preview" aria-label="Anteprima tridimensionale del treno selezionato"></canvas><div class="preview-bottom"><span>⟲ ROTAZIONE AUTOMATICA</span><span id="fleet-number">01 / 09</span></div></div><div class="train-heading"><div><div class="eyebrow" id="train-class"></div><h2 id="train-name"></h2></div><span class="seal">IR<br>✦</span></div><p id="train-description"></p><div class="fleet-label"><span>SELEZIONA LA TUA LOCOMOTIVA</span><span>09 CONVOGLI DISPONIBILI</span></div><div id="train-roster" aria-label="Locomotive disponibili"></div></section><aside class="dispatch"><div class="eyebrow">UFFICIO DEL CAPOSTAZIONE</div><h2>Prepara la spedizione</h2><p class="muted">Traccia una rotta. Alimenta la caldaia.<br>Lascia il mondo ordinario alle spalle.</p><div class="section-label">01 <span>LA TUA ROTTA</span></div>
+
+            <div class="tab-container">
+                <button class="tab active" onclick="switchTab('draw')">Disegna mappa</button>
+                <button class="tab" onclick="switchTab('seed')">Codice mondo</button>
+            </div>
+
+            <!-- PANNELLO DISEGNO -->
+            <div id="panel-draw" class="panel active">
+                <canvas id="editor-canvas" width="200" height="200"></canvas>
+                <div class="tools">
+                    <button style="background:black; color:white;" onclick="setTool('black')">BINARIO</button>
+                    <button style="background:blue; color:white;" onclick="setTool('blue')">ACQUA</button>
+                    <button style="background:white; color:black;" onclick="setTool('white')">TERRA</button>
+                    <button style="background:#444; color:white;" onclick="clearCanvas()">RESET</button>
+                </div>
+                <div class="file-actions">
+                    <button onclick="downloadMap()">SCARICA</button>
+                    <button onclick="document.getElementById('upload-input').click()">CARICA</button>
+                    <input type="file" accept="image/*" id="upload-input" style="display:none" onchange="uploadMap(this)">
+                </div>
+            </div>
+
+            <!-- PANNELLO SEED AGGIORNATO -->
+            <div id="panel-seed" class="panel">
+                <p>Inserisci codice mondo:</p>
+                <!-- oninput aggiorna il record mostrato -->
+                <input type="text" id="seed-input" placeholder="es. WINTER2025" value="WINTER2025"
+                    oninput="checkRecord()">
+                <button onclick="generateRandomSeed()">Genera Random</button>
+
+                <div id="record-display">
+                    Record: --
+                </div>
+            </div>
+
+<div class="difficulty-section"><div class="section-label">02 <span>IL TUO CONVOGLIO</span></div><div class="difficulty-options"><button class="difficulty-btn selected" data-wagons="3">Esploratore<small>3 vagoni · Facile</small></button><button class="difficulty-btn" data-wagons="6">Avventuriero<small>6 vagoni · Medio</small></button><button class="difficulty-btn" data-wagons="12">Leggenda<small>12 vagoni · Estremo</small></button></div></div><div class="dispatch-note">✦ Ogni vagone aumenta la sfida. Controlla la pressione e affronta le curve con prudenza.</div><button id="depart-button" class="depart" disabled>PREPARAZIONE LOCOMOTIVA…</button><p id="dispatch-error" role="alert"></p><div class="controls-hint"><kbd>SPAZIO</kbd> Carbone <span>·</span> <kbd>S / ↓</kbd> Freno</div></aside></div><footer class="depot-footer"><span>FORGIATO NEL VAPORE. GUIDATO DALL’IMPOSSIBILE.</span><span>EST. MDCCCLXXXVI ✦</span></footer></div>
+        <!-- HUD -->
+        <div id="hud">
+            <!-- Top Bar: Giri e Tempo Totale -->
+            <div id="top-bar"
+                style="position: absolute; top: 20px; width: 100%; display: flex; justify-content: center; gap: 40px; text-shadow: 0 0 10px black; font-weight: bold; font-size: 1.5em; z-index: 5;">
+                <div>LAP <span id="lap-val" style="color: #0ff;">1</span></div>
+                <div>TOT <span id="timer-val">00:00.00</span></div>
+            </div>
+
+            <!-- PANNELLO LATERALE GIRI -->
+            <div id="laps-panel">
+                <div style="text-align:center; margin-bottom:10px; border-bottom:1px solid white;">TEMPI SUL GIRO</div>
+                <div id="laps-list"></div>
+            </div>
+
+            <div class="gauge-container">
+                <div>VELOCITÀ</div>
+                <div class="bar-bg">
+                    <div id="speed-bar" class="bar-fill"></div>
+                </div>
+                <div id="speed-val">0 km/h</div>
+            </div>
+            <div class="gauge-container">
+                <div>PRESSIONE</div>
+                <div class="bar-bg">
+                    <div id="heat-bar" class="bar-fill"></div>
+                </div>
+                <div id="pressure-val">0 Bar</div>
+            </div>
+
+            <div style="position: absolute; bottom: 90px; width: 100%; text-align: center; color: #aaa;">
+                <small>[SPACE] CARBONE &nbsp; | &nbsp; [S] FRENO</small>
+            </div>
+
+            <div id="minimap-container"><canvas id="minimap"></canvas></div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="game-over">
+            <h1 id="fail-reason" style="color:red; text-shadow: 0 0 20px red; font-size: 3em;">DERAGLIATO!</h1>
+            <div
+                style="background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid #555; text-align: center; margin-bottom: 20px;">
+                <h2 id="final-time" style="margin: 0; line-height: 1.5em; color: white;"></h2>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <button class="difficulty-btn" onclick="window.gameInstance.retry()">🔄 RIPROVA</button>
+                <button class="difficulty-btn" onclick="window.gameInstance.goToMenu()">🏠 MENU PRINCIPALE</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Importiamo anche Storage per usarlo nell'UI -->
+    <script type="module">
+        import { Storage } from './src/core/Storage.js';
+
+        // Espone Storage globalmente per i metodi inline (sporco ma veloce per HTML)
+        window.StorageAPI = Storage;
+
+        // Controlla record all'avvio
+        setTimeout(() => checkRecord(), 500);
+    </script>
+
+    <script type="module" src="./src/main.js"></script>
+
+    <script>
+        // --- EDITOR LOGIC ---
+        const canvas = document.getElementById('editor-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 200, 200);
+        let painting = false; let color = 'black'; let lineWidth = 3;
+        function setTool(c) { color = c; lineWidth = (c === 'black') ? 3 : 10; }
+        function clearCanvas() { ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 200, 200); }
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX ?? e.touches[0].clientX;
+            const clientY = e.clientY ?? e.touches[0].clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        };
+        const startDraw = (e) => { painting = true; draw(e); };
+        const endDraw = () => { painting = false; ctx.beginPath(); };
+        const draw = (e) => {
+            if (!painting) return; e.preventDefault();
+            const pos = getPos(e);
+            ctx.lineWidth = lineWidth; ctx.lineCap = 'round'; ctx.strokeStyle = color;
+            ctx.lineTo(pos.x, pos.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+        };
+        window.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchend', endDraw); canvas.addEventListener('touchmove', draw);
+
+        function downloadMap() {
+            const link = document.createElement('a'); link.download = 'train-map.png'; link.href = canvas.toDataURL(); link.click();
+        }
+        function uploadMap(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () { ctx.drawImage(img, 0, 0, 200, 200); }
+                    img.src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // --- MENU LOGIC ---
+        let currentMode = 'draw';
+        function switchTab(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            if (mode === 'draw') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('panel-draw').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('panel-seed').classList.add('active');
+                checkRecord(); // Aggiorna record quando apri il tab
+            }
+        }
+
+        function generateRandomSeed() {
+            const seed = "RAND" + Math.floor(Math.random() * 10000);
+            document.getElementById('seed-input').value = seed;
+            checkRecord();
+        }
+
+        // --- RECORD LOGIC ---
+        function checkRecord() {
+            if (!window.StorageAPI) return;
+
+            const seedInput = document.getElementById('seed-input').value.trim().toUpperCase();
+            if (!seedInput) return;
+
+            const record = window.StorageAPI.getRecord(seedInput);
+            const display = document.getElementById('record-display');
+
+            if (record) {
+                // Formatta tempo
+                const ms = record.bestLap || 0;
+                const min = Math.floor(ms / 60000);
+                const sec = Math.floor((ms % 60000) / 1000);
+                const cen = Math.floor((ms % 1000) / 10);
+                const timeStr = `${min}:${sec.toString().padStart(2, '0')}.${cen.toString().padStart(2, '0')}`;
+
+                display.innerHTML = `
+                    <div style="color:#0f0">RECORD ESISTENTE</div>
+                    Giri Max: ${record.laps} | Best Lap: ${timeStr}
+                `;
+            } else {
+                display.innerHTML = "Nessun record per questo seed.";
+            }
+        }
+
+        // Chiamata dal Game.js quando si torna al menu
+        window.updateMenuUI = (lastSeed) => {
+            switchTab('seed');
+            document.getElementById('seed-input').value = lastSeed;
+            checkRecord();
+        };
+
+        window.startGame = (wagons) => {
+            let mapConfig = {};
+            if (currentMode === 'draw') {
+                mapConfig = { type: 'image', data: canvas.toDataURL('image/png') };
+            } else {
+                const seedVal = document.getElementById('seed-input').value.trim();
+                mapConfig = { type: 'seed', data: seedVal || "DEFAULT" };
+            }
+            window.dispatchEvent(new CustomEvent('game-start', { detail: { wagons: wagons, mapConfig: mapConfig, trainId: window.selectedTrainId || 'base' } }));
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Cube World · Playground</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+
+<meta name="description" content="Un esperimento di generazione procedurale: un mondo tridimensionale fatto di cubi, terreno e rumore Perlin.">
+<link rel="canonical" href="https://playground.federicolelli.com/games/procedural-worlds/procedural-world-cube.html">
+<link rel="stylesheet" href="../../assets/playground.css">
+</head>
+
+<body>
+<script src="../../assets/playground.js"></script>
+  <!-- Il canvas verrà creato dinamicamente dal renderer di Three.js -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
+
+    // Setup renderer e scena
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x87CEEB, 0.0025); // Added fog with light blue color and density
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+    camera.lookAt(0, 0, 0);
+
+    // Luci
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(1, 1, 1);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    // Cubo controllabile
+    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    cube.position.y = 1;
+    scene.add(cube);
+
+    // Stato del giocatore
+    const player = {
+      direction: new THREE.Vector3(0, 0, -1), // Direzione iniziale (guarda in avanti)
+      speed: 2.1,
+      rotationSpeed: 0.05,
+      isJumping: false,
+      jumpHeight: 30,
+      jumpSpeed: 0.15,
+      jumpProgress: 0,
+      initialY: 0
+    };
+
+    // Gestione input
+    const keys = { w: false, a: false, s: false, d: false, ' ': false }; // Aggiungiamo spazio
+    document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+    document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+    // Generazione procedurale
+    const chunkSize = 16;
+    const viewDistance = 15; // Numero di chunk visibili in ogni direzione
+    const chunks = new Map(); // Mappa per tenere traccia dei chunk generati
+    const features = new Map(); // Mappa per tenere traccia delle feature (alberi, rocce)
+
+    // Crea una luce puntiforme (Point Light)
+    const pointLight = new THREE.PointLight(0xffffff, 10, 100); // colore bianco, intensità 10, distanza di 100 unità
+    pointLight.position.set(0, 0, 0); // posizione della luce
+    scene.add(pointLight);
+
+    // Livello dell'acqua
+    const WATER_LEVEL = -2;
+
+    // Implementazione di Perlin Noise
+    class PerlinNoise {
+      constructor() {
+        this.permutation = new Array(512);
+        this.p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
+          190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166,
+          77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196,
+          135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42,
+          223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228,
+          251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
+          138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
+
+        for (let i = 0; i < 256; i++) {
+          this.permutation[i] = this.permutation[i + 256] = this.p[i];
+        }
+      }
+
+      fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      }
+
+      lerp(t, a, b) {
+        return a + t * (b - a);
+      }
+
+      grad(hash, x, y, z) {
+        const h = hash & 15;
+        const u = h < 8 ? x : y;
+        const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+      }
+
+      noise(x, y, z = 0) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        const Z = Math.floor(z) & 255;
+
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+        z -= Math.floor(z);
+
+        const u = this.fade(x);
+        const v = this.fade(y);
+        const w = this.fade(z);
+
+        const A = this.permutation[X] + Y;
+        const AA = this.permutation[A] + Z;
+        const AB = this.permutation[A + 1] + Z;
+        const B = this.permutation[X + 1] + Y;
+        const BA = this.permutation[B] + Z;
+        const BB = this.permutation[B + 1] + Z;
+
+        return this.lerp(w,
+          this.lerp(v,
+            this.lerp(u,
+              this.grad(this.permutation[AA], x, y, z),
+              this.grad(this.permutation[BA], x - 1, y, z)
+            ),
+            this.lerp(u,
+              this.grad(this.permutation[AB], x, y - 1, z),
+              this.grad(this.permutation[BB], x - 1, y - 1, z)
+            )
+          ),
+          this.lerp(v,
+            this.lerp(u,
+              this.grad(this.permutation[AA + 1], x, y, z - 1),
+              this.grad(this.permutation[BA + 1], x - 1, y, z - 1)
+            ),
+            this.lerp(u,
+              this.grad(this.permutation[AB + 1], x, y - 1, z - 1),
+              this.grad(this.permutation[BB + 1], x - 1, y - 1, z - 1)
+            )
+          )
+        );
+      }
+    }
+
+    const perlin = new PerlinNoise();
+    // Perlin noise aggiuntivo per le feature
+    const featureNoise = new PerlinNoise();
+
+    // Funzione di generazione del terreno con Perlin Noise
+    function generateHeight(x, z) {
+      // Utilizziamo scale diverse per creare dettagli a vari livelli
+      const scale1 = 0.01;
+      const scale2 = 0.05;
+      const scale3 = 0.2;
+
+      // Generiamo diverse "ottave" di rumore
+      const octave1 = perlin.noise(x * scale1, z * scale1) * 15; // Montagne e valli principali
+      const octave2 = perlin.noise(x * scale2, z * scale2) * 5;  // Colline
+      const octave3 = perlin.noise(x * scale3, z * scale3) * 1;  // Dettagli del terreno
+
+      // Combiniamo le ottave con pesi diversi
+      let height = octave1 + octave2 + octave3;
+
+      return height;
+    }
+
+    // Crea modelli di alberi
+    function createTreeModel() {
+      const group = new THREE.Group();
+
+      // Tronco
+      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 2, 8);
+      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = 1;
+      group.add(trunk);
+
+      // Fogliame (vari livelli)
+const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
+
+      // Primo livello di foglie (più largo)
+      const leafGeometry1 = new THREE.ConeGeometry(1.5, 2, 8);
+      const leaves1 = new THREE.Mesh(leafGeometry1, leafMaterial);
+      leaves1.position.y = 2;
+      group.add(leaves1);
+
+      // Secondo livello di foglie (più stretto e alto)
+      const leafGeometry2 = new THREE.ConeGeometry(1, 1.5, 8);
+      const leaves2 = new THREE.Mesh(leafGeometry2, leafMaterial);
+      leaves2.position.y = 3;
+      group.add(leaves2);
+
+      return group;
+    }
+
+    // Crea modelli di rocce
+    function createRockModel() {
+      const group = new THREE.Group();
+
+      // Utilizziamo un dodecaedro distorto per le rocce
+      const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 0.5 + 0.5);
+
+      // Distorciamo un po' la geometria
+      const positionAttribute = rockGeometry.attributes.position;
+      for (let i = 0; i < positionAttribute.count; i++) {
+        const x = positionAttribute.getX(i);
+        const y = positionAttribute.getY(i);
+        const z = positionAttribute.getZ(i);
+
+        positionAttribute.setX(i, x + (Math.random() - 0.5) * 0.2);
+        positionAttribute.setY(i, y + (Math.random() - 0.5) * 0.2);
+        positionAttribute.setZ(i, z + (Math.random() - 0.5) * 0.2);
+      }
+
+      const rockMaterial = new THREE.MeshLambertMaterial({
+        color: 0x999999,
+        flatShading: true
+      });
+
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      rock.position.y = rockGeometry.parameters.radius / 2;
+      group.add(rock);
+
+      // Ruotiamo casualmente la roccia
+      group.rotation.x = Math.random() * Math.PI;
+      group.rotation.y = Math.random() * Math.PI;
+      group.rotation.z = Math.random() * Math.PI;
+
+      return group;
+    }
+
+    // Determina se una feature dovrebbe essere posizionata in un dato punto
+    function shouldPlaceFeature(x, z, featureType) {
+      // Utilizziamo un rumore a frequenza più alta per determinare il posizionamento delle feature
+const featureValue = featureNoise.noise(x * 0.5, z * 0.5, 0);
+
+  if (featureType === 'tree') {
+    // Alberi solo su terreno adatto (non in acqua, non su montagne)
+    const height = generateHeight(x, z);
+    if (height < WATER_LEVEL + 0.5 || height > 10) return false;
+
+        // Alberi più probabili nelle zone di media altitudine
+if (height > 3 && height < 7) {
+    return featureValue > 0.4; // 60% chance in forest zones
+} else {
+    return featureValue > 0.8; // 20% chance elsewhere
+}
+      } else if (featureType === 'rock') {
+        // Rocce più comuni ad alta quota
+        const height = generateHeight(x, z);
+        if (height < WATER_LEVEL) return false;
+
+if (height > 8) {
+    return featureValue > 0.60; // 40% di probabilità sulle montagne
+} else {
+    return featureValue > 0.95; // 5% di probabilità altrove
+}
+      }
+
+      return false;
+    }
+
+    // Crea features (alberi, rocce) per un chunk
+    function createFeaturesForChunk(chunkX, chunkZ) {
+      const chunkKey = `${chunkX},${chunkZ}`;
+      if (features.has(chunkKey)) return;
+
+      const featureGroup = new THREE.Group();
+      const featureDensity = 8; // Controlla quante potenziali posizioni valutare
+
+      // Usa un seed fisso per il chunk in modo che gli alberi siano sempre nello stesso posto
+// Use a closure to encapsulate the seed for better isolation
+const createRandomGenerator = (initialSeed) => {
+  let seed = initialSeed;
+  return () => {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  };
+};
+
+const random = createRandomGenerator(chunkX * 10000 + chunkZ);
+
+      // Genera alberi
+      for (let i = 0; i < featureDensity; i++) {
+        for (let j = 0; j < featureDensity; j++) {
+          const offsetX = (i / featureDensity) * chunkSize;
+          const offsetZ = (j / featureDensity) * chunkSize;
+
+          const worldX = chunkX * chunkSize + offsetX;
+          const worldZ = chunkZ * chunkSize + offsetZ;
+
+          // Aggiungi un po' di casualità alla posizione
+          const jitterX = (random() - 0.5) * (chunkSize / featureDensity) * 0.7;
+          const jitterZ = (random() - 0.5) * (chunkSize / featureDensity) * 0.7;
+
+          const finalX = worldX + jitterX;
+          const finalZ = worldZ + jitterZ;
+
+          const height = generateHeight(finalX, finalZ);
+
+          // Verifica se posizionare un albero
+          if (shouldPlaceFeature(finalX, finalZ, 'tree')) {
+            const tree = createTreeModel();
+            tree.position.set(finalX, height, finalZ);
+
+            // Dimensione casuale dell'albero
+            const treeScale = 0.8 + random() * 0.4;
+            tree.scale.set(treeScale, treeScale, treeScale);
+
+            featureGroup.add(tree);
+          }
+
+          // Verifica se posizionare una roccia (posizioni diverse dagli alberi)
+          if (shouldPlaceFeature(finalX + 0.5, finalZ + 0.5, 'rock')) {
+            const rock = createRockModel();
+            rock.position.set(finalX, height, finalZ);
+
+            // Dimensione casuale della roccia
+            const rockScale = 0.8 + random() * 1.2;
+            rock.scale.set(rockScale, rockScale, rockScale);
+
+            featureGroup.add(rock);
+          }
+        }
+      }
+
+      scene.add(featureGroup);
+      features.set(chunkKey, featureGroup);
+    }
+
+    // Rimuovi features per un chunk
+    function removeFeaturesForChunk(chunkX, chunkZ) {
+      const chunkKey = `${chunkX},${chunkZ}`;
+      if (!features.has(chunkKey)) return;
+
+      const featureGroup = features.get(chunkKey);
+      scene.remove(featureGroup);
+
+      // Disposa le geometrie e i materiali
+      featureGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach(material => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+
+      features.delete(chunkKey);
+    }
+
+    // Crea un singolo chunk con colore basato sull'altezza
+    function createChunk(chunkX, chunkZ) {
+      const chunkKey = `${chunkX},${chunkZ}`;
+
+      if (chunks.has(chunkKey)) return;
+
+      const geometry = new THREE.PlaneGeometry(chunkSize, chunkSize, chunkSize - 1, chunkSize - 1);
+      geometry.rotateX(-Math.PI / 2);
+
+      // Applica il rumore ai vertici e prepara colori per ogni vertice
+      const positionAttribute = geometry.attributes.position;
+      const colors = new Float32Array(positionAttribute.count * 3);
+
+      for (let i = 0; i < positionAttribute.count; i++) {
+        const x = positionAttribute.getX(i) + (chunkX * chunkSize);
+        const z = positionAttribute.getZ(i) + (chunkZ * chunkSize);
+        const height = generateHeight(x, z);
+        positionAttribute.setY(i, height);
+
+        // Definisci il colore basato sull'altezza
+        let color;
+        if (height < WATER_LEVEL + 0.2) {
+          color = new THREE.Color(0x226677); // Vicino all'acqua (spiaggia sommersa)
+        } else if (height < WATER_LEVEL + 1.5) {
+          color = new THREE.Color(0xddcc88); // Sabbia
+        } else if (height < 3) {
+          color = new THREE.Color(0x22aa22); // Verde per prati
+        } else if (height < 7) {
+          color = new THREE.Color(0x116611); // Verde scuro per foreste
+        } else if (height < 12) {
+          color = new THREE.Color(0x664422); // Marrone per montagne
+        } else {
+          color = new THREE.Color(0xffffff); // Bianco per neve
+        }
+
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+      }
+
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshLambertMaterial({
+        vertexColors: true,
+        wireframe: false
+      });
+
+      const chunk = new THREE.Mesh(geometry, material);
+      chunk.position.set(chunkX * chunkSize, 0, chunkZ * chunkSize);
+      scene.add(chunk);
+
+      chunks.set(chunkKey, chunk);
+
+      // Crea le feature per questo chunk
+      createFeaturesForChunk(chunkX, chunkZ);
+    }
+
+    // Rimuovi un chunk
+    function removeChunk(chunkX, chunkZ) {
+      const chunkKey = `${chunkX},${chunkZ}`;
+      if (!chunks.has(chunkKey)) return;
+
+      // Rimuovi le feature prima del chunk
+      removeFeaturesForChunk(chunkX, chunkZ);
+
+      const chunk = chunks.get(chunkKey);
+      scene.remove(chunk);
+      chunk.geometry.dispose();
+      chunk.material.dispose();
+      chunks.delete(chunkKey);
+    }
+
+    // Crea lo specchio d'acqua
+    function createWater() {
+      const waterGeometry = new THREE.PlaneGeometry(chunkSize * (viewDistance * 2 + 1), chunkSize * (viewDistance * 2 + 1));
+      waterGeometry.rotateX(-Math.PI / 2);
+
+      const waterMaterial = new THREE.MeshStandardMaterial({
+        color: 0x0099dd,
+        transparent: true,
+        opacity: 0.7,
+        roughness: 0.1,
+        metalness: 0.3
+      });
+
+      const water = new THREE.Mesh(waterGeometry, waterMaterial);
+      water.position.y = WATER_LEVEL;
+      scene.add(water);
+
+      return water;
+    }
+
+    const water = createWater();
+
+    // Crea skybox
+
+
+    // Sistema di rilevamento collisioni
+    function checkCollision(position, radius) {
+      // Controlla collisioni con le feature
+      for (const featureGroup of features.values()) {
+        featureGroup.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            // Semplifichiamo la collisione usando una bounding box
+            const boundingBox = new THREE.Box3().setFromObject(child);
+
+            // Creiamo una sfera attorno alla posizione del player
+            const sphere = new THREE.Sphere(position, radius);
+
+            if (boundingBox.intersectsSphere(sphere)) {
+              return true;
+            }
+          }
+        });
+      }
+
+      return false;
+    }
+
+    // Aggiorna i chunk visibili in base alla posizione del cubo
+    function updateChunks() {
+      const playerChunkX = Math.floor(cube.position.x / chunkSize);
+      const playerChunkZ = Math.floor(cube.position.z / chunkSize);
+
+      // Aggiorna la posizione dell'acqua per seguire il giocatore
+      water.position.x = playerChunkX * chunkSize;
+      water.position.z = playerChunkZ * chunkSize;
+
+      for (let x = playerChunkX - viewDistance; x <= playerChunkX + viewDistance; x++) {
+        for (let z = playerChunkZ - viewDistance; z <= playerChunkZ + viewDistance; z++) {
+          createChunk(x, z);
+        }
+      }
+
+      for (const [key, chunk] of chunks.entries()) {
+        const [chunkX, chunkZ] = key.split(',').map(Number);
+        const distance = Math.max(
+          Math.abs(chunkX - playerChunkX),
+          Math.abs(chunkZ - playerChunkZ)
+        );
+
+        if (distance > viewDistance + 1) {
+          removeChunk(chunkX, chunkZ);
+        }
+      }
+    }
+
+    // Gestione del salto
+    function handleJump() {
+      if (keys[' '] && !player.isJumping) {
+        player.isJumping = true;
+        player.jumpProgress = 0;
+        player.initialY = cube.position.y;
+      }
+
+      if (player.isJumping) {
+        player.jumpProgress += player.jumpSpeed;
+
+        // Curva di salto parabolico
+        const jumpHeight = Math.sin(player.jumpProgress) * player.jumpHeight;
+
+        if (player.jumpProgress >= Math.PI) {
+          // Fine del salto
+          player.isJumping = false;
+          cube.position.y = player.initialY;
+        } else {
+          cube.position.y = player.initialY + jumpHeight;
+        }
+      }
+    }
+
+    // Loop di aggiornamento
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotazione con A e D
+      if (keys.a) {
+        player.direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotationSpeed);
+        cube.rotation.y += player.rotationSpeed;
+      }
+      if (keys.d) {
+        player.direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), -player.rotationSpeed);
+        cube.rotation.y -= player.rotationSpeed;
+      }
+
+      // Movimento avanti/indietro con controllo collisioni
+      let moved = false;
+      let newPosition = cube.position.clone();
+
+      if (keys.w) {
+        newPosition.x += player.direction.x * player.speed;
+        newPosition.z += player.direction.z * player.speed;
+        moved = true;
+      }
+      if (keys.s) {
+        newPosition.x -= player.direction.x * player.speed;
+        newPosition.z -= player.direction.z * player.speed;
+        moved = true;
+      }
+
+      // Verifica collisioni
+      const collisionRadius = 0.5; // Raggio di collisione del player
+      const hasCollision = checkCollision(newPosition, collisionRadius);
+
+      if (moved && !hasCollision) {
+        cube.position.copy(newPosition);
+
+        // Aggiorna altezza del terreno se non stiamo saltando
+        if (!player.isJumping) {
+          const terrainY = generateHeight(cube.position.x, cube.position.z);
+          cube.position.y = Math.max(terrainY + 0.5, WATER_LEVEL + 0.5); // Non affondare sotto il livello dell'acqua
+          player.initialY = cube.position.y;
+        }
+      }
+
+      // Gestione salto
+      handleJump();
+
+      // Aggiorna la posizione della camera con un po' di elevazione
+      const cameraOffset = new THREE.Vector3(
+        -player.direction.x * 10,
+        5,
+        -player.direction.z * 10
+      );
+      camera.position.copy(cube.position).add(cameraOffset);
+      camera.lookAt(cube.position);
+
+      // Aggiorna la posizione della luce puntiforme
+      pointLight.position.copy(cube.position);
+      pointLight.position.y += 5;
+
+      // Effetto ondulazione dell'acqua
+      const time = Date.now() * 0.001;
+water.position.y = WATER_LEVEL + Math.sin(time) * 0.1;
+
+// Aggiorna densità della nebbia basata sull'altezza del giocatore
+
+// Aggiorna i chunk
+updateChunks();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    updateChunks();
+    animate();
+  </script>
+</body>
+
+</html>

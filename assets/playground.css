@@ -1,0 +1,21 @@
+#pg-loader{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:#2347e8;color:#fff;font:800 16px/1.5 system-ui,sans-serif;text-align:center;transition:opacity .28s,visibility .28s;background-image:repeating-linear-gradient(135deg,transparent 0 28px,#ffffff0b 28px 56px)}
+#pg-loader[hidden]{display:none!important}
+#pg-loader.pg-leaving{opacity:0;visibility:hidden;pointer-events:none}
+.pg-loading-box{padding:32px;max-width:520px}
+.pg-loading-mark{display:block;font-size:64px;line-height:1.2;animation:pg-bounce 1s ease-in-out infinite alternate;filter:drop-shadow(5px 5px 0 #10122b)}
+#pg-loader h2{font:900 clamp(30px,7vw,64px)/1 system-ui,sans-serif;letter-spacing:-.05em;margin:24px 0 16px}
+.pg-loading-track{width:200px;max-width:100%;height:12px;border:3px solid #10122b;border-radius:20px;background:#10122b;margin:24px auto;overflow:hidden}
+.pg-loading-track::after{content:"";display:block;width:45%;height:100%;background:#ffc21a;border-radius:20px;animation:pg-slide 1s ease-in-out infinite alternate}
+.pg-loading-actions{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:20px}
+.pg-loading-actions a{color:#fff;text-underline-offset:4px}
+#pg-nav{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:10000;font:700 13px/1.4 system-ui,sans-serif;color:#fff;touch-action:auto;max-width:calc(100vw - 24px)}
+#pg-nav summary{cursor:pointer;list-style:none;background:#10122bee;border:2px solid #ffffff66;border-radius:999px;padding:10px 16px;box-shadow:3px 3px 0 #0006}
+#pg-nav summary::-webkit-details-marker{display:none}
+#pg-nav .pg-links{position:absolute;bottom:52px;right:0;width:240px;max-width:calc(100vw - 24px);max-height:65vh;overflow:auto;background:#10122bf5;border:2px solid #ffffff66;border-radius:16px;padding:8px;box-shadow:4px 4px 0 #0006}
+#pg-nav a{display:block;color:#fff;text-decoration:none;padding:10px;border-radius:8px}
+#pg-nav a:hover,#pg-nav a:focus-visible{background:#2347e8}
+#pg-nav a[aria-current="page"]{color:#ffc21a}
+#pg-nav :focus-visible,#pg-loader :focus-visible{outline:3px solid #ffc21a;outline-offset:3px}
+@keyframes pg-bounce{to{transform:translateY(-10px) rotate(-8deg)}}
+@keyframes pg-slide{to{transform:translateX(125%)}}
+@media(prefers-reduced-motion:reduce){#pg-loader,#pg-loader *{animation:none!important;transition:none!important}}

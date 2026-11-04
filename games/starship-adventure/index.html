@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Explorer · Playground</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        #energyBar {
+            width: 200px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        #energyLevel {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        #minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        #minimapCanvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+
+<meta name="description" content="Un prototipo spaziale 3D: pilota una navicella, gestisci l’energia e sperimenta con le orbite dei pianeti.">
+<link rel="canonical" href="https://playground.federicolelli.com/games/starship-adventure/">
+<link rel="stylesheet" href="../../assets/playground.css">
+</head>
+
+<body>
+<script src="../../assets/playground.js"></script>
+    <div id="info">
+        <div>Velocità: <span id="speed">0</span> tick</div>
+        <div>Energia: <span id="energy">100</span>%</div>
+        <div>Camera: <span id="cameraMode">Posteriore</span> (Premi V per cambiare)</div>
+        <div id="energyBar">
+            <div id="energyLevel"></div>
+        </div>
+        <div>Comandi:</div>
+        <div>W/S: Su/Giù, A/D: Sinistra/Destra</div>
+        <div>SPAZIO: Accelera, C: Decelera</div>
+        <div>Stato: <span id="status">Navigazione libera</span></div>
+    </div>
+
+    <div id="minimap">
+        <canvas id="minimapCanvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="init.js"></script>
+    
+    <script src="camera.js"></script>
+    <script src="keyInput.js"></script>
+    <script>
+        
+        // Ridimensionamento finestra
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Gestione dell'energia
+        function manageEnergy() {
+            // Recupero energia dai pannelli solari
+            energy += ENERGY_RECOVERY*0.05;
+            energy = Math.min(energy, MAX_ENERGY);
+
+            // Aggiornamento dell'interfaccia
+            document.getElementById('energy').textContent = Math.round(energy);
+            document.getElementById('energyLevel').style.width = `${energy}%`;
+        }
+
+        // Aggiornamento della mappa
+        function updateMinimap() {
+            minimapContext.fillStyle = 'black';
+            minimapContext.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            const mapScale = 0.5;
+            const centerX = minimapCanvas.width / 2;
+            const centerY = minimapCanvas.height / 2;
+
+            // Disegna la navicella al centro
+            minimapContext.fillStyle = 'white';
+            minimapContext.beginPath();
+            minimapContext.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            minimapContext.fill();
+
+            // Disegna i pianeti
+            for (let planet of planets) {
+                // Calcola la posizione relativa
+                const relX = (planet.position.x - spaceship.position.x) * mapScale;
+                const relZ = (planet.position.z - spaceship.position.z) * mapScale;
+
+                const planetX = centerX + relX;
+                const planetY = centerY + relZ;
+
+                // Disegna il pianeta
+                const distance = new THREE.Vector3().subVectors(planet.position, spaceship.position).length();
+
+                // Indica se è in range per l'orbita
+                const isInOrbitRange = distance < planet.orbitRadius * 3 && distance > planet.orbitRadius;
+                const isCloseToOrbit = distance < planet.orbitRadius * 4;
+
+                // Colore in base alla distanza
+                if (planet === orbitingPlanet) {
+                    minimapContext.fillStyle = '#00ff00'; // Verde se in orbita
+                } else if (isInOrbitRange) {
+                    minimapContext.fillStyle = '#ffff00'; // Giallo se in range per orbita
+                } else {
+                    // Usa il colore del pianeta
+                    if (planet.name === "Sole") minimapContext.fillStyle = '#ffcc00';
+                    else if (planet.name === "Terra") minimapContext.fillStyle = '#3399ff';
+                    else if (planet.name === "Marte") minimapContext.fillStyle = '#ff6666';
+                    else if (planet.name === "Venere") minimapContext.fillStyle = '#66cc66';
+                    else if (planet.name === "Saturno") minimapContext.fillStyle = '#cccc66';
+                }
+
+                // Disegna il pianeta
+                const size = Math.max(2, planet.geometry.parameters.radius * 0.3);
+                minimapContext.beginPath();
+                minimapContext.arc(planetX, planetY, size, 0, Math.PI * 2);
+                minimapContext.fill();
+
+                // Disegna il range dell'orbita se il pianeta è abbastanza vicino
+                if (isCloseToOrbit) {
+                    minimapContext.strokeStyle = '#555555';
+                    minimapContext.beginPath();
+                    minimapContext.arc(planetX, planetY, planet.orbitRadius * mapScale, 0, Math.PI * 2);
+                    minimapContext.stroke();
+
+                    // Aggiungi il nome del pianeta
+                    minimapContext.fillStyle = 'white';
+                    minimapContext.font = '10px Arial';
+                    minimapContext.fillText(planet.name, planetX + size + 2, planetY);
+                }
+            }
+
+            // Disegna una freccia di direzione
+            const dirLength = 10;
+            const dirX = centerX + direction.x * dirLength;
+            const dirY = centerY + direction.z * dirLength;
+
+            minimapContext.strokeStyle = '#00ffff';
+            minimapContext.beginPath();
+            minimapContext.moveTo(centerX, centerY);
+            minimapContext.lineTo(dirX, dirY);
+            minimapContext.stroke();
+        }
+
+        function handleControls() {
+                // Se la navicella è in orbita, esci dal controllo manuale
+                if (orbitingPlanet) return;
+
+                // Thrust principale (avanti)
+                if (keys.space && energy > 0 && currentSpeed < MAX_SPEED) {
+                    currentSpeed += 0.05;
+                    if (currentSpeed > MAX_SPEED) currentSpeed = MAX_SPEED;
+                    // Consuma energia SOLO quando si preme il tasto
+                    if (keys.space && !lastKeys.space) {
+                        energy -= ENERGY_CONSUMPTION;
+                    }
+                }
+
+                // Decelera (C)
+                if (keys.c) {
+                    currentSpeed -= 0.05;
+                    if (currentSpeed < -MAX_SPEED) currentSpeed = -MAX_SPEED;
+                    // Consuma energia SOLO quando si preme il tasto
+                    if (keys.c && !lastKeys.c) {
+                        energy -= ENERGY_CONSUMPTION * 0.5;
+                    }
+                }
+
+                // Movimento direzionale
+                if (energy > 0) {
+                let directionChanged = false;
+                const rotationSpeed = 0.0151;
+
+                // Vettore su globale
+                const worldUp = new THREE.Vector3(0, 1, 0);
+
+                // Calcola il vettore rightbasato sulla direzione corrente
+                const right = new THREE.Vector3().crossVectors(direction, worldUp).normalize();
+
+                // Thrust verticale (su/giù) - Rotazione controllata
+                if (keys.w) {
+                    // Ruota attorno all'asse right usando Matrix4
+                    const rotationMatrix = new THREE.Matrix4().makeRotationAxis(right, rotationSpeed);
+                    direction.applyMatrix4(rotationMatrix);
+                    directionChanged = true;
+                }
+                if (keys.s) {
+                    // Rotazione opposta
+                    const rotationMatrix = new THREE.Matrix4().makeRotationAxis(right, -rotationSpeed);
+                    direction.applyMatrix4(rotationMatrix);
+                    directionChanged = true;
+                }
+
+                // Thrust laterale (sinistra/destra) - Rotazione attorno all'asse verticale
+                if (keys.a) {
+                    // Ruota attorno all'asse Y mantenendo la verticalità
+                    const rotationMatrix = new THREE.Matrix4().makeRotationY(rotationSpeed);
+                    direction.applyMatrix4(rotationMatrix);
+                    directionChanged = true;
+                }
+                if (keys.d) {
+                    // Ruota attorno all'asse Y in direzione opposta
+                    const rotationMatrix = new THREE.Matrix4().makeRotationY(-rotationSpeed);
+                    direction.applyMatrix4(rotationMatrix);
+                    directionChanged = true;
+                }
+
+                // Normalizza la direzione per mantenere la consistenza
+                direction.normalize();
+
+                // Consuma energia solo se è cambiata direzione E si è premuto un tasto nuovo
+                if (directionChanged && (
+                    (keys.w && !lastKeys.w) ||
+                    (keys.a && !lastKeys.a) ||
+                    (keys.s && !lastKeys.s) ||
+                    (keys.d && !lastKeys.d)
+                )) {
+                    console.log(direction);
+                    energy -= ENERGY_CONSUMPTION * 0.5;
+                }
+            }
+                Object.assign(lastKeys, keys);
+
+                // Calcola la velocità in base alla direzione
+                velocity.copy(direction).multiplyScalar(currentSpeed);
+
+                // Applica il movimento
+                spaceship.position.add(velocity);
+
+                // Ruota la navicella nella direzione del movimento
+                if (velocity.length() > 0.01) {
+                    const lookDirection = spaceship.position.clone().add(direction);
+                    spaceship.lookAt(lookDirection);
+                }
+
+                // Aggiornamento velocità nell'interfaccia
+                document.getElementById('speed').textContent = currentSpeed.toFixed(1);
+            }
+        
+        // Miglioramento della funzione calculateOrbit per mantenere la velocità e distanza corrette
+        function calculateOrbit(planet) {
+            // Usa la velocità corrente della navicella per calcolare la velocità orbitale
+            // ma assicurati che sia nell'intervallo appropriato
+            const minOrbitSpeed = 0.5;
+            const maxOrbitSpeed = 1.2;
+
+            // Se non abbiamo ancora impostato una velocità orbitale, calcoliamola
+            if (!orbitSpeed) {
+                // Calcola la velocità orbitale basata sulla velocità di approccio
+                orbitSpeed = Math.min(Math.max(currentSpeed * 0.7, minOrbitSpeed), maxOrbitSpeed);
+            }
+
+            // Incrementa l'angolo di orbita in base alla velocità
+            orbitAngle += orbitSpeed * 0.01;
+
+            // Ottieni il centro dell'orbita (posizione del pianeta)
+            const orbitCenter = planet.position.clone();
+
+            // Distanza di orbita costante, basata sul raggio orbitale del pianeta
+            const orbitDistance = planet.orbitRadius;
+
+            // Calcola la posizione nella traiettoria orbitale
+            const x = orbitCenter.x + Math.cos(orbitAngle) * orbitDistance;
+            const z = orbitCenter.z + Math.sin(orbitAngle) * orbitDistance;
+
+            // Per rendere l'orbita più realistica, aggiungiamo una leggera oscillazione all'altezza Y
+            const y = orbitCenter.y + Math.sin(orbitAngle * 0.5) * (orbitDistance * 0.1);
+
+            spaceship.position.set(x, y, z);
+
+            // Rotazione della navicella per guardare tangente all'orbita
+            const tangent = new THREE.Vector3(-Math.sin(orbitAngle), 0, Math.cos(orbitAngle));
+            spaceship.lookAt(spaceship.position.clone().add(tangent));
+        }
+
+        // Nuova funzione per gestire diverse viste della camera
+        
+        function resetGame() {
+            spaceship.position.set(0, 0, 50);
+            velocity.set(0, 0, 0);
+            currentSpeed = 0;
+            direction.set(0, 0, -1);
+            energy = MAX_ENERGY;
+            orbitingPlanet = null;
+        }
+
+        // Loop di animazione principale
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Gestione controlli ed energia
+            handleControls();
+            manageEnergy();
+
+            // Gestione orbite e gravità
+            checkPlanetaryInfluence();
+
+            // Se siamo in orbita, calcola la posizione orbitale
+            if (orbitingPlanet) {
+                calculateOrbit(orbitingPlanet);
+            }
+
+            // Aggiorna la mappa
+            updateMinimap();
+
+            // Aggiorna la posizione della camera
+            updateCamera();
+
+            renderer.render(scene, camera);
+        }
+
+        document.addEventListener('keydown', function (event) {
+                if (event.key.toLowerCase() === 'v') {
+                    switchCameraView();
+                }
+            });
+        
+        // Aggiunta del tasto O per entrare in orbita
+        document.addEventListener('keydown', function (event) {
+            if (event.key.toLowerCase() === 'o') {
+                keys.o = true;
+            }
+        });
+
+        document.addEventListener('keyup', function (event) {
+            if (event.key.toLowerCase() === 'o') {
+                keys.o = false;
+            }
+        });
+
+        // Avvia il gioco
+        init();
+    </script>
+</body>
+
+</html>

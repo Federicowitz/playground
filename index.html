@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Playground · Federico Lelli</title>
+<meta name="description" content="Il mio parco giochi personale: giochi, esperimenti e progetti da provare nel browser.">
+<link rel="canonical" href="https://playground.federicolelli.com/">
+<link rel="stylesheet" href="assets/playground.css">
+<meta name="theme-color" content="#2347E8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap" rel="stylesheet">
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#2347E8;          /* blu lobby */
+  --bg-2:#1C3BC4;
+  --ink:#10122B;         /* contorni e testo sulle card */
+  --paper:#FFFFFF;
+  --tomato:#FF5A36; --sun:#FFC21A; --mint:#2EC4A0;
+  --pink:#FF8FB1;  --lime:#B6E04A; --sky:#7FD0FF;
+  --bw:3px;              /* spessore contorno */
+  --sh:6px;              /* ombra dura */
+  --font-d:'Lilita One','Arial Rounded MT Bold',system-ui,sans-serif;
+  --font-b:'Nunito',system-ui,sans-serif;
+  --font-l:'Bricolage Grotesque','Arial Black',system-ui,sans-serif;
+  --gap:14px;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-b);font-weight:600;color:#fff;background:var(--bg);
+  background-image:repeating-linear-gradient(135deg,transparent 0 28px,rgba(255,255,255,.045) 28px 56px);
+  min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  overflow-x:hidden;
+}
+a{color:inherit}
+:focus-visible{outline:4px solid var(--sun);outline-offset:3px}
+
+/* ============ TOP BAR ============ */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,32px) 0}
+.back{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-weight:800;font-size:.95rem;
+  background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;border:var(--bw) solid var(--ink);
+  transition:transform .15s}
+.back:hover{transform:translateX(-3px)}
+.count{font-family:var(--font-d);font-size:1.05rem;background:var(--sun);color:var(--ink);
+  padding:7px 16px;border-radius:999px;border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+
+/* ============ HERO ============ */
+.hero{max-width:1240px;margin:0 auto;padding:clamp(28px,6vw,64px) clamp(16px,3vw,32px) 8px;position:relative}
+.logo{font-family:var(--font-l);font-weight:800;line-height:.88;letter-spacing:-.055em;font-variation-settings:'opsz' 96;
+  font-size:clamp(3.4rem,15.5vw,12.5rem);color:#fff;text-shadow:5px 5px 0 var(--ink)}
+.hero-row{display:flex;flex-wrap:wrap;align-items:center;gap:18px 28px;margin-top:clamp(22px,3vw,34px)}
+.lead{max-width:34ch;font-size:clamp(1.05rem,2.4vw,1.3rem);font-weight:800;line-height:1.35}
+.lead b{color:var(--sun)}
+
+/* filtri */
+.filters{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font:800 1rem var(--font-b);cursor:pointer;color:var(--ink);background:#fff;
+  border:var(--bw) solid var(--ink);border-radius:14px;padding:9px 18px;box-shadow:4px 4px 0 var(--ink);
+  transition:transform .12s,box-shadow .12s,background .12s}
+.chip:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 var(--ink)}
+.chip[aria-pressed="true"]{background:var(--sun);transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+
+
+#gl{position:absolute;right:0;top:0;width:min(62%,760px);height:100%;pointer-events:none;z-index:0;opacity:0;transition:opacity .9s}
+#gl.on{opacity:1}
+.hero>*:not(#gl){position:relative;z-index:1}
+
+/* ============ LAZY LOADING ============ */
+.art img.lz{position:absolute;inset:0;opacity:0;transition:opacity .6s}
+.art img.lz.ok{opacity:1}
+.shots img.lz{opacity:0;background:rgba(255,255,255,.2);transition:opacity .4s}
+.shots img.lz.ok{opacity:1}
+.card.sk{cursor:default;box-shadow:none;border-color:rgba(16,18,43,.35);
+  background:linear-gradient(100deg,rgba(255,255,255,.10) 30%,rgba(255,255,255,.26) 50%,rgba(255,255,255,.10) 70%) 0 0/300% 100%;
+  animation:shim 1.3s linear infinite}
+@keyframes shim{to{background-position:-300% 0}}
+
+/* ============ GRIGLIA ============ */
+.grid{max-width:1240px;margin:0 auto;padding:clamp(26px,4vw,44px) clamp(16px,3vw,32px) 40px;
+  display:grid;gap:var(--gap);grid-template-columns:repeat(6,1fr);grid-auto-rows:118px;grid-auto-flow:dense}
+.s-xl{grid-column:span 3;grid-row:span 4}
+.s-w {grid-column:span 3;grid-row:span 2}
+.s-t {grid-column:span 2;grid-row:span 3}
+.s-m {grid-column:span 2;grid-row:span 2}
+.s-s {grid-column:span 1;grid-row:span 2}
+
+.card{
+  position:relative;color:var(--ink);background:var(--c);
+  border:var(--bw) solid var(--ink);border-radius:22px;box-shadow:var(--sh) var(--sh) 0 var(--ink);
+  overflow:hidden;cursor:pointer;isolation:isolate;
+  transform:rotate(var(--rot,0deg));
+  transition:transform .32s cubic-bezier(.34,1.7,.5,1),box-shadow .2s;
+  animation:in .5s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--i)*55ms)
+}
+@keyframes in{from{opacity:0;transform:scale(.7) rotate(calc(var(--rot,0deg) - 6deg))}}
+.card.hide{display:none}
+.art{position:absolute;inset:0;z-index:-1}
+.art svg{width:100%;height:100%;display:block}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+
+.meta{position:absolute;left:14px;right:14px;top:14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  transition:opacity .2s}
+.tag{font:800 .78rem var(--font-b);background:var(--ink);color:#fff;padding:4px 10px;border-radius:999px}
+.title{font-family:var(--font-d);font-weight:400;line-height:.95;font-size:clamp(1.4rem,2.6vw,1.9rem);
+  background:#fff;padding:6px 12px 5px;border:var(--bw) solid var(--ink);border-radius:12px;
+  transform:rotate(-1.5deg);box-shadow:3px 3px 0 var(--ink)}
+.s-xl .title{font-size:clamp(2rem,5vw,3.6rem);padding:8px 16px 6px}
+.s-s .title{font-size:1.2rem}
+
+/* scheda che esplode */
+.pop{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;
+  padding:14px;background:linear-gradient(to top,rgba(16,18,43,.96) 55%,rgba(16,18,43,.55) 100%);color:#fff;
+  opacity:0;transform:scale(.85);transform-origin:50% 100%;pointer-events:none;
+  transition:opacity .2s,transform .35s cubic-bezier(.34,1.8,.5,1)}
+.pop h3{font-family:var(--font-d);font-weight:400;font-size:1.35rem;line-height:1;color:var(--sun)}
+.s-xl .pop h3{font-size:2.2rem}
+.pop p{font-size:.92rem;line-height:1.35;font-weight:600}
+.s-xl .pop p{font-size:1.08rem;max-width:42ch}
+.shots{display:flex;gap:8px}
+.shots img{width:64px;height:44px;object-fit:cover;border:2px solid #fff;border-radius:8px}
+.s-xl .shots img{width:110px;height:72px}
+.play{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+  font-family:var(--font-d);font-size:1.25rem;line-height:1;color:var(--ink);background:var(--lime);
+  padding:11px 20px 9px;border:var(--bw) solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 #fff;
+  transition:transform .12s,box-shadow .12s}
+.play svg{width:16px;height:16px;fill:currentColor}
+.play:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 #fff}
+.play:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #fff}
+.play.ext{background:var(--sky)}
+
+@media (hover:hover){
+  .card:hover{transform:scale(1.07) rotate(0deg);z-index:5;box-shadow:12px 14px 0 var(--ink)}
+  .card:hover .pop{opacity:1;transform:none;pointer-events:auto}
+  .card:hover .meta{opacity:0}
+}
+.card:focus-within{z-index:5}
+.card.open{transform:scale(1.03) rotate(0deg);z-index:5;box-shadow:10px 10px 0 var(--ink)}
+.card.open .pop,.card:focus-within .pop{opacity:1;transform:none;pointer-events:auto}
+.card.open .meta,.card:focus-within .meta{opacity:0}
+
+/* card "in arrivo" */
+.card.soon{--c:#fff;cursor:default;border-style:dashed;box-shadow:none;opacity:.92}
+.card.soon .title{box-shadow:none;border-style:dashed}
+
+/* ============ FOOTER ============ */
+.foot{max-width:1240px;margin:0 auto;padding:10px clamp(16px,3vw,32px) 48px;
+  display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;font-weight:800;color:rgba(255,255,255,.85)}
+.foot a{text-underline-offset:4px}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:980px){
+  .grid{grid-template-columns:repeat(4,1fr);grid-auto-rows:108px}
+  .s-xl{grid-column:span 4;grid-row:span 3}
+  .s-w{grid-column:span 4;grid-row:span 2}
+  .s-t,.s-m{grid-column:span 2}
+  .s-s{grid-column:span 2;grid-row:span 2}
+}
+@media (max-width:560px){
+  :root{--gap:12px;--sh:4px}
+  .grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:100px}
+  .s-xl{grid-column:span 2;grid-row:span 4}
+  .s-w{grid-column:span 2;grid-row:span 2}
+  .s-t{grid-column:span 1;grid-row:span 3}
+  .s-m,.s-s{grid-column:span 1;grid-row:span 2}
+  .s-m .title,.s-t .title{font-size:1.25rem}
+  .pop{padding:10px;gap:8px}.pop p{font-size:.82rem}
+  .play{font-size:1.1rem;padding:9px 16px 7px}
+  #gl{width:100%}
+  .filters{width:100%}.chip{flex:1;padding:9px 8px;font-size:.92rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition-duration:.01ms!important}
+}
+/* Static game previews: strong vignette, deepening on hover and keyboard focus. */
+.art::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 44%,rgba(5,9,22,.08) 5%,rgba(5,9,22,.55) 55%,rgba(5,9,22,.94) 100%);transition:background .25s,opacity .25s;pointer-events:none}
+.card:hover .art::after,.card.open .art::after,.card:focus-within .art::after{background:radial-gradient(ellipse at 50% 44%,rgba(5,9,22,.45),rgba(5,9,22,.85) 60%,#050916 100%)}
+.soon-note{position:absolute;left:16px;right:16px;bottom:20px;font-size:1rem;font-weight:800;line-height:1.4}
+.card.soon .art::after{display:none}
+.s-s .pop{gap:7px;padding:10px}.s-s .pop p{font-size:.8rem}.s-s .play{font-size:1rem;padding:9px 12px}
+.s-s .pop,.s-m .pop{justify-content:flex-start;overflow-y:auto}
+.pop>*{flex-shrink:0}
+</style>
+</head>
+
+<body>
+<script src="assets/playground.js"></script>
+
+<header class="top">
+  <a class="back" href="https://federicolelli.com">← federicolelli.com</a>
+  <span class="count" id="count" aria-live="polite"></span>
+</header>
+
+<section class="hero" id="hero">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <h1 class="logo">Playground</h1>
+  <div class="hero-row">
+    <p class="lead">Qui pubblico i miei <b>giochi, esperimenti e progetti</b>. Nati per curiosità, da provare nel browser.</p>
+    <div class="filters" role="group" aria-label="Filtra il catalogo">
+      <button class="chip" data-f="all" aria-pressed="true">Tutti</button>
+      <button class="chip" data-f="game" aria-pressed="false">Giochi</button>
+      <button class="chip" data-f="project" aria-pressed="false">Progetti</button>
+    </div>
+  </div>
+</section>
+
+<main class="grid" id="grid" aria-busy="true"><div class="card sk s-xl"></div><div class="card sk s-w"></div><div class="card sk s-t"></div><div class="card sk s-m"></div><div class="card sk s-s"></div><div class="card sk s-m"></div></main>
+<noscript><p style="text-align:center;padding:24px">Serve JavaScript per vedere il catalogo.</p></noscript>
+
+<footer class="foot">
+  <span>Idee nate per curiosità. Esperimenti da giocare. Grandi novità in arrivo!</span>
+  <a href="https://federicolelli.com">Torna al sito principale</a>
+</footer>
+
+<script>
+/* =====================================================================
+   CATALOGO — per aggiungere un gioco basta aggiungere un oggetto qui.
+   type   : 'game' (gioco, vive su playground.federicolelli.com/slug)
+            'project' (progetto più strutturato, di solito link esterno)
+   url    : 'games/lagoondrift/' = interno · 'https://…' = esterno
+   size   : xl | w | t | m | s   (grandezza della tessera)
+   color  : colore di sfondo della card
+   img    : (opzionale) copertina, es. '/assets/lagoon-drift/cover.jpg'
+   shots  : (opzionale) fino a 3 immagini piccole mostrate sulla scheda
+   soon   : true → tessera "in arrivo", non cliccabile
+   Le preview sono immagini statiche: nessun gioco viene avviato nella landing.
+   ===================================================================== */
+const GAMES = [
+  { title:'Lagoon Drift', type:'game', size:'xl', color:'#2EC4A0', rot:-1,
+    tag:'Esplorazione · relax e rafting', url:'games/lagoondrift/', cta:'Esplora',
+    desc:'Tutto è partito da uno sfondo desktop di Windows. Ora quella voglia di perdermi in un paesaggio è una laguna da navigare: lasciati trasportare o affronta le rapide a tempo.',
+    img:'assets/previews/lagoon-drift.svg' },
+  { title:'Iron & Aether', type:'game', size:'w', color:'#FFC21A', rot:1,
+    tag:'Treni · prototipo single player', url:'games/transmundi/', cta:'In carrozza',
+    desc:'Nato per puro divertimento: scegli una locomotiva, disegna i binari o genera un mondo e tieni a bada la caldaia. Nel futuro che immagino: sfide multiplayer 1vs1 su percorsi speculari.',
+    img:'assets/previews/iron-aether.svg' },
+  { title:'Cartoon World Generator', type:'project', size:'t', color:'#FF8FB1', rot:-1.5,
+    tag:'Laboratorio · mondi procedurali', url:'games/procedural-worlds/procedural-world-cartoon-generator.html', cta:'Genera',
+    desc:'Un laboratorio di paesaggi 3D in stile cartoon. Sperimenta con i parametri e guarda nascere un mondo: qui il bello è esplorare quello che succede.',
+    img:'assets/previews/cartoon-world.svg' },
+  { title:'Space Explorer', type:'game', size:'m', color:'#FF5A36', rot:1.2,
+    tag:'Spazio · prototipo', url:'games/starship-adventure/', cta:'Decolla',
+    desc:'Una navicella, pianeti e la curiosità di vedere cosa succede. Un prototipo per sperimentare con volo, energia e orbite.',
+    img:'assets/previews/space-explorer.svg' },
+  { title:'Cube World', type:'project', size:'s', color:'#B6E04A', rot:-1,
+    tag:'Lab · voxel', url:'games/procedural-worlds/procedural-world-cube.html', cta:'Esplora',
+    desc:'Terreno, cubi e rumore Perlin: un piccolo esperimento di generazione procedurale. Nessun traguardo, solo un mondo da osservare.',
+    img:'assets/previews/cube-world.svg' },
+  { title:'Grandi novità!', type:'game', size:'m', color:'#7FD0FF', rot:1.5, soon:true,
+    tag:'In arrivo', desc:'Nuovi esperimenti e nuove idee. Questo playground continua a crescere.' }
+];
+/* ===================================================================== */
+
+const $grid  = document.getElementById('grid');
+const $count = document.getElementById('count');
+const PAL = ['#FF5A36','#FFC21A','#2EC4A0','#FF8FB1','#B6E04A','#7FD0FF','#FFFFFF','#10122B'];
+
+/* piccolo generatore pseudo-casuale così ogni card ha sempre la stessa grafica */
+function rng(seed){return()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296)}
+
+/* copertina generativa: forme geometriche, nessuna immagine necessaria */
+function art(seed, base){
+  const r = rng(seed*977+13), W=400, H=400, out=[];
+  const pick = () => PAL.filter(c=>c.toLowerCase()!==base.toLowerCase())[Math.floor(r()*7)];
+  for(let i=0;i<9;i++){
+    const x=r()*W, y=r()*H, s=40+r()*130, c=pick(), k=Math.floor(r()*4), rot=Math.floor(r()*360);
+    const op = (0.35 + r()*.45).toFixed(2);
+    const common = `fill="${c}" opacity="${op}" stroke="#10122B" stroke-width="3" transform="rotate(${rot} ${x} ${y})"`;
+    if(k===0) out.push(`<circle cx="${x}" cy="${y}" r="${s/2}" ${common}/>`);
+    if(k===1) out.push(`<rect x="${x-s/2}" y="${y-s/2}" width="${s}" height="${s}" rx="${s/5}" ${common}/>`);
+    if(k===2) out.push(`<polygon points="${x},${y-s/2} ${x+s/2},${y+s/2} ${x-s/2},${y+s/2}" ${common}/>`);
+    if(k===3) out.push(`<circle cx="${x}" cy="${y}" r="${s/2.4}" fill="none" stroke="${c}" stroke-width="14" opacity="${op}"/>`);
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${out.join('')}</svg>`;
+}
+
+const esc = s => String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const PLAY_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v13l11-6.5z"/></svg>';
+
+function render(){
+  $grid.innerHTML = GAMES.map((g,i)=>{
+    const ext = /^https?:/.test(g.url||'');
+    const cover = art(i+1,g.color) + (g.img ? `<img class="lz" data-src="${esc(g.img)}" alt="" loading="lazy" decoding="async" width="960" height="600">` : '');
+    const shots = (g.shots||[]).slice(0,3).map(s=>`<img class="lz" data-src="${esc(s)}" alt="" decoding="async">`).join('');
+    const btn = g.soon ? '' :
+      `<a class="play ${ext?'ext':''}" href="${esc(g.url)}" data-pg-title="${esc(g.title)}" ${ext?'target="_blank" rel="noopener"':''}>${esc(g.cta||'Gioca')} ${ext?'↗':PLAY_ICON}</a>`;
+    return `
+    <article class="card s-${g.size} ${g.soon?'soon':''}" data-type="${g.type}" tabindex="${g.soon?-1:0}"
+      style="--c:${g.color};--rot:${g.rot||0}deg;--i:${i}">
+      <div class="art">${cover}</div>
+      <div class="meta"><span class="tag">${esc(g.tag)}${ext?' · esterno':''}</span><h2 class="title">${esc(g.title)}</h2></div>
+      ${g.soon ? `<div class="soon-note">${esc(g.desc)}</div>` : `<div class="pop"><h3>${esc(g.title)}</h3><p>${esc(g.desc)}</p>${shots?`<div class="shots">${shots}</div>`:''}${btn}</div>`}
+    </article>`;
+  }).join('');
+  updateCount('all');
+  $grid.removeAttribute('aria-busy');
+  initLazy();
+}
+
+/* filtri */
+function updateCount(f){
+  const n = [...$grid.children].filter(c=>!c.classList.contains('hide') && !c.classList.contains('soon')).length;
+  $count.textContent = n + (n===1 ? ' gioco' : ' giochi e progetti');
+}
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  const f=b.dataset.f;
+  [...$grid.children].forEach(c=>c.classList.toggle('hide', f!=='all' && c.dataset.type!==f));
+  updateCount(f);
+}));
+
+/* touch: un tap apre la scheda, il tap sul pulsante Gioca la lancia */
+$grid.addEventListener('click',e=>{
+  if(e.target.closest('.play')) return;
+  const card=e.target.closest('.card'); if(!card||card.classList.contains('soon')) return;
+  const was=card.classList.contains('open');
+  $grid.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open'));
+  if(!was) card.classList.add('open');
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('.card')) $grid.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open')); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') $grid.querySelectorAll('.card.open').forEach(c=>c.classList.remove('open')); });
+
+render();
+
+/* ===== LAZY LOADING =====
+   La grafica generata appare subito. Le immagini vere si caricano solo quando la card è vicina allo
+   schermo e sfumano sopra la grafica; se una non carica, resta la grafica e non si rompe nulla. */
+function initLazy(){
+  const load=img=>{ if(img.src||!img.dataset.src)return;
+    img.onload=()=>img.classList.add('ok'); img.onerror=()=>img.remove(); img.src=img.dataset.src; };
+  if(!('IntersectionObserver' in window)){ document.querySelectorAll('img[data-src]').forEach(load); return; }
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){ e.target.querySelectorAll('img[data-src]').forEach(load); io.unobserve(e.target); }
+  }),{rootMargin:'300px'});
+  $grid.querySelectorAll('.card').forEach(c=>io.observe(c));
+}
+
+/* ===== HERO 3D (three.js) =====
+   Interruttore: USE_3D=false spegne tutto. Parte solo a pagina caricata e browser a riposo,
+   si ferma quando esce dallo schermo, non parte con "riduci animazioni" o senza WebGL. */
+const USE_3D = true;
+(function(){
+  const cv=document.getElementById('gl');
+  if(!USE_3D||matchMedia('(prefers-reduced-motion:reduce)').matches){cv.remove();return;}
+  const idle=window.requestIdleCallback||(f=>setTimeout(f,900));
+  addEventListener('load',()=>idle(()=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; s.async=true;
+    s.onload=()=>{try{init()}catch(e){cv.remove()}}; s.onerror=()=>cv.remove();
+    document.head.appendChild(s);
+  },{timeout:2500}));
+  function init(){
+    const hero=document.getElementById('hero'), T=THREE;
+    const ren=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+    ren.setPixelRatio(Math.min(devicePixelRatio,2));
+    const scene=new T.Scene(), cam=new T.PerspectiveCamera(35,1,.1,60);
+    scene.add(new T.AmbientLight(0xffffff,.8));
+    const dl=new T.DirectionalLight(0xffffff,.9); dl.position.set(4,6,8); scene.add(dl);
+    const defs=[
+      [new T.IcosahedronGeometry(1.2,0),0xFFC21A,-2.6, 1.1,.55],
+      [new T.TorusGeometry(.95,.36,10,22),0xFF5A36, .5, 1.6,.8],
+      [new T.BoxGeometry(1.5,1.5,1.5),0xFFFFFF, 3.1, .5,.6],
+      [new T.OctahedronGeometry(1.05),0xFF8FB1,-1.0,-1.5,.7],
+      [new T.ConeGeometry(.95,1.7,5),0xB6E04A, 1.8,-1.4,.5],
+      [new T.SphereGeometry(.7,16,12),0x7FD0FF, 4.6, 2.0,.9]
+    ];
+    const items=defs.map(([geo,col,x,y,sp],i)=>{
+      const g=new T.Group();
+      g.add(new T.Mesh(geo,new T.MeshPhongMaterial({color:col,flatShading:true,shininess:0,specular:0x000000})));
+      const o=new T.Mesh(geo,new T.MeshBasicMaterial({color:0x10122B,side:T.BackSide})); o.scale.setScalar(1.08); g.add(o);
+      g.userData={x,y,sp,ph:i*1.7}; g.position.set(x,y,0); scene.add(g); return g;
+    });
+    function size(){
+      const w=cv.clientWidth,h=cv.clientHeight; if(!w||!h)return;
+      ren.setSize(w,h,false); cam.aspect=w/h; cam.position.z=15+Math.max(0,1.3-w/h)*9; cam.updateProjectionMatrix();
+    }
+    new ResizeObserver(size).observe(cv); size();
+    let mx=0,my=0,vis=true,run=false;
+    addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5; my=e.clientY/innerHeight-.5;},{passive:true});
+    new IntersectionObserver(([e])=>{vis=e.isIntersecting;go();}).observe(hero);
+    document.addEventListener('visibilitychange',go);
+    function go(){ if(!run&&vis&&!document.hidden){run=true;requestAnimationFrame(tick);} }
+    function tick(t){
+      if(!vis||document.hidden){run=false;return;}
+      t*=.001;
+      items.forEach(g=>{const u=g.userData;
+        g.rotation.x=t*.4*u.sp; g.rotation.y=t*.55*u.sp;
+        g.position.y=u.y+Math.sin(t*u.sp+u.ph)*.28; g.position.x=u.x+mx*1.2*u.sp; });
+      scene.rotation.y+=((mx*.35)-scene.rotation.y)*.05; scene.rotation.x+=((my*.25)-scene.rotation.x)*.05;
+      ren.render(scene,cam); cv.classList.add('on'); requestAnimationFrame(tick);
+    }
+    go();
+  }
+})();
+</script>
+</body>
+</html>

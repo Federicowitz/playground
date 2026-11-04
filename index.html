@@ -239,15 +239,15 @@ const GAMES = [
     tag:'Treni · prototipo single player', url:'games/transmundi/', cta:'In carrozza',
     desc:'Nato per puro divertimento: scegli una locomotiva, disegna i binari o genera un mondo e tieni a bada la caldaia. Nel futuro che immagino: sfide multiplayer 1vs1 su percorsi speculari.',
     img:'assets/previews/iron-aether.svg' },
-  { title:'Cartoon World Generator', type:'project', size:'t', color:'#FF8FB1', rot:-1.5,
+  { title:'Cartoon World Generator', type:'project', size:'t', color:'#FF8FB1', rot:-1.5, desktop:true,
     tag:'Laboratorio · mondi procedurali', url:'games/procedural-worlds/procedural-world-cartoon-generator.html', cta:'Genera',
     desc:'Un laboratorio di paesaggi 3D in stile cartoon. Sperimenta con i parametri e guarda nascere un mondo: qui il bello è esplorare quello che succede.',
     img:'assets/previews/cartoon-world.svg' },
-  { title:'Space Explorer', type:'game', size:'m', color:'#FF5A36', rot:1.2,
+  { title:'Space Explorer', type:'game', size:'m', color:'#FF5A36', rot:1.2, desktop:true,
     tag:'Spazio · prototipo', url:'games/starship-adventure/', cta:'Decolla',
     desc:'Una navicella, pianeti e la curiosità di vedere cosa succede. Un prototipo per sperimentare con volo, energia e orbite.',
     img:'assets/previews/space-explorer.svg' },
-  { title:'Cube World', type:'project', size:'s', color:'#B6E04A', rot:-1,
+  { title:'Cube World', type:'project', size:'s', color:'#B6E04A', rot:-1, desktop:true,
     tag:'Lab · voxel', url:'games/procedural-worlds/procedural-world-cube.html', cta:'Esplora',
     desc:'Terreno, cubi e rumore Perlin: un piccolo esperimento di generazione procedurale. Nessun traguardo, solo un mondo da osservare.',
     img:'assets/previews/cube-world.svg' },
@@ -293,7 +293,7 @@ function render(){
     <article class="card s-${g.size} ${g.soon?'soon':''}" data-type="${g.type}" tabindex="${g.soon?-1:0}"
       style="--c:${g.color};--rot:${g.rot||0}deg;--i:${i}">
       <div class="art">${cover}</div>
-      <div class="meta"><span class="tag">${esc(g.tag)}${ext?' · esterno':''}</span><h2 class="title">${esc(g.title)}</h2></div>
+      <div class="meta"><span class="tag">${esc(g.tag)}${g.desktop?' · Desktop':''}${ext?' · esterno':''}</span><h2 class="title">${esc(g.title)}</h2></div>
       ${g.soon ? `<div class="soon-note">${esc(g.desc)}</div>` : `<div class="pop"><h3>${esc(g.title)}</h3><p>${esc(g.desc)}</p>${shots?`<div class="shots">${shots}</div>`:''}${btn}</div>`}
     </article>`;
   }).join('');

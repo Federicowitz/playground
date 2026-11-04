@@ -6,10 +6,34 @@
   const games = [
     ['Lagoon Drift', 'games/lagoondrift/'],
     ['Iron & Aether', 'games/transmundi/'],
-    ['Space Explorer', 'games/starship-adventure/'],
-    ['Cartoon World Generator', 'games/procedural-worlds/procedural-world-cartoon-generator.html'],
-    ['Cube World', 'games/procedural-worlds/procedural-world-cube.html']
+    ['Space Explorer', 'games/starship-adventure/', true],
+    ['Cartoon World Generator', 'games/procedural-worlds/procedural-world-cartoon-generator.html', true],
+    ['Cube World', 'games/procedural-worlds/procedural-world-cube.html', true]
   ];
+  const touchOnly = () => matchMedia('(pointer: coarse) and (hover: none)').matches;
+  const desktopGame = url => games.find(([, path, desktop]) => {
+    const target = new URL(path, root);
+    return desktop && url.origin === target.origin && url.pathname.replace(/index\.html$/, '') === target.pathname;
+  });
+  let warning;
+  function warnDesktop(name, proceed, cancel) {
+    if (warning?.open) return;
+    if (!warning) {
+      warning = document.createElement('dialog');
+      warning.id = 'pg-desktop-warning';
+      warning.setAttribute('aria-labelledby', 'pg-warning-title');
+      warning.setAttribute('aria-describedby', 'pg-warning-description');
+      warning.innerHTML = '<h2 id="pg-warning-title">Qui servono mouse e tastiera</h2><p id="pg-warning-description"></p><div class="pg-warning-actions"><button type="button" data-action="back" autofocus>Torna indietro</button><button type="button" data-action="try">Prova comunque</button></div>';
+      ['pointerdown', 'keydown', 'keyup'].forEach(type => warning.addEventListener(type, event => event.stopPropagation()));
+      document.body.append(warning);
+    }
+    warning.querySelector('p').textContent = `${name} non ha ancora controlli touch. Ti consigliamo di aprirlo da computer; da telefono o tablet potresti non riuscire a giocare.`;
+    const dismiss = () => {warning.close(); cancel?.();};
+    warning.querySelector('[data-action="back"]').onclick = dismiss;
+    warning.querySelector('[data-action="try"]').onclick = () => {warning.close(); proceed();};
+    warning.oncancel = event => {event.preventDefault(); dismiss();};
+    warning.showModal();
+  }
   const loader = document.createElement('div');
   loader.id = 'pg-loader';
   loader.setAttribute('role', 'status');
@@ -57,9 +81,12 @@
     summary.textContent = '✦ Playground';
     const links = document.createElement('nav');
     links.className = 'pg-links'; links.setAttribute('aria-label', 'Cambia gioco');
-    [['← Tutti i giochi', 'index.html'], ...games].forEach(([name, path]) => {
+    [['← Tutti i giochi', 'index.html'], ...games].forEach(([name, path, desktop]) => {
       const link = document.createElement('a'); link.href = new URL(path, root).href;
       link.textContent = name; link.dataset.pgTitle = name;
+      if (desktop) {
+        const badge = document.createElement('small'); badge.className = 'pg-desktop-badge'; badge.textContent = 'Desktop'; link.append(' ', badge);
+      }
       const targetPath = new URL(link.href).pathname;
       if (targetPath === location.pathname || targetPath + 'index.html' === location.pathname) link.setAttribute('aria-current', 'page');
       links.append(link);
@@ -75,10 +102,30 @@
     const url = new URL(link.href);
     if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || (url.pathname === location.pathname && url.search === location.search && url.hash)) return;
     event.preventDefault(); if (leaving) return;
-    leaving = true;
-    show(link.dataset.pgTitle || 'Si riparte!');
-    requestAnimationFrame(() => requestAnimationFrame(() => location.assign(url.href)));
+    const navigate = () => {
+      if (leaving) return;
+      leaving = true;
+      show(link.dataset.pgTitle || 'Si riparte!');
+      requestAnimationFrame(() => requestAnimationFrame(() => location.assign(url.href)));
+    };
+    const desktop = desktopGame(url);
+    if (touchOnly() && desktop) warnDesktop(desktop[0], () => {
+      // One-use acknowledgment prevents a second prompt on the destination.
+      try { sessionStorage.setItem('pg-touch-approved', desktop[1]); } catch {}
+      navigate();
+    });
+    else navigate();
   });
+  // Covers direct URLs, new tabs and links opened without the catalog.
+  document.addEventListener('DOMContentLoaded', () => {
+    const desktop = desktopGame(new URL(location.href));
+    let approved;
+    try {
+      approved = sessionStorage.getItem('pg-touch-approved');
+      sessionStorage.removeItem('pg-touch-approved');
+    } catch {}
+    if (touchOnly() && desktop && approved !== desktop[1]) warnDesktop(desktop[0], () => {}, () => location.assign(home.href));
+  }, {once:true});
   // The browser may restore a page with its departure overlay still visible.
   window.addEventListener('pageshow', event => {
     leaving = false;

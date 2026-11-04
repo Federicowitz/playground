@@ -16,6 +16,15 @@
 #pg-nav a:hover,#pg-nav a:focus-visible{background:#2347e8}
 #pg-nav a[aria-current="page"]{color:#ffc21a}
 #pg-nav :focus-visible,#pg-loader :focus-visible{outline:3px solid #ffc21a;outline-offset:3px}
+.pg-desktop-badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#10122b;color:#fff;font:800 11px/1.4 system-ui,sans-serif}
+#pg-desktop-warning{position:fixed;inset:0;margin:auto;width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:28px;border:3px solid #10122b;border-radius:22px;background:#fff;color:#10122b;box-shadow:7px 7px 0 #10122b;font:600 16px/1.5 system-ui,sans-serif;touch-action:pan-y;user-select:text}
+#pg-desktop-warning::backdrop{background:#060c27dc}
+#pg-desktop-warning h2{margin:0 0 16px;font:900 28px/1.1 system-ui,sans-serif;letter-spacing:-.03em;color:#10122b}
+#pg-desktop-warning p{margin:0;color:#10122b;font:600 16px/1.5 system-ui,sans-serif}
+.pg-warning-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+#pg-desktop-warning button{flex:1;min-width:140px;min-height:48px;border:2px solid #10122b;border-radius:12px;padding:10px 14px;background:#ffc21a;color:#10122b;font:800 14px/1.3 system-ui,sans-serif;cursor:pointer}
+#pg-desktop-warning [data-action="try"]{background:#fff}
+#pg-desktop-warning button:focus-visible{outline:3px solid #2347e8;outline-offset:3px}
 @keyframes pg-bounce{to{transform:translateY(-10px) rotate(-8deg)}}
 @keyframes pg-slide{to{transform:translateX(125%)}}
 @media(prefers-reduced-motion:reduce){#pg-loader,#pg-loader *{animation:none!important;transition:none!important}}

@@ -63,8 +63,8 @@ export class Game {
         });
         const btnCoal = document.getElementById('btn-coal');
         const btnBrake = document.getElementById('btn-brake');
-        if(btnCoal) btnCoal.addEventListener('click', () => { if(!this.isDying) this.train?.addCoal() });
-        if(btnBrake) btnBrake.addEventListener('click', () => { if(!this.isDying) this.train?.brake() });
+        if(btnCoal) btnCoal.addEventListener('click', () => { if(this.isRunning && !this.isDying) this.train?.addCoal() });
+        if(btnBrake) btnBrake.addEventListener('click', () => { if(this.isRunning && !this.isDying) this.train?.brake() });
     }
 
     async start(wagons, mapConfig, trainAssets) {
